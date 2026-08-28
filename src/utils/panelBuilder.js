@@ -22,7 +22,7 @@ function buildLobbyPanel(lobbyId) {
 
   const players = db
     .prepare(
-      `SELECT lobby_players.*, players.username FROM lobby_players
+      `SELECT lobby_players.*, players.username, players.avatar_url FROM lobby_players
        JOIN players ON players.user_id = lobby_players.user_id
        WHERE lobby_id = ? ORDER BY joined_at ASC`
     )
@@ -30,6 +30,7 @@ function buildLobbyPanel(lobbyId) {
 
   const teamACount = players.filter((p) => p.team === "A").length;
   const teamBCount = players.filter((p) => p.team === "B").length;
+  const creator = players.find((p) => p.user_id === lobby.creator_id);
 
   const embed = new EmbedBuilder()
     .setTitle(`🎯 Sala de partida #${lobbyId}`)
@@ -38,8 +39,12 @@ function buildLobbyPanel(lobbyId) {
       { name: `🅰️ Equipo A (${teamACount}/${MAX_PER_TEAM})`, value: formatTeam(players, "A"), inline: true },
       { name: `🅱️ Equipo B (${teamBCount}/${MAX_PER_TEAM})`, value: formatTeam(players, "B"), inline: true }
     )
-    .setFooter({ text: `Creada por ${players.find((p) => p.user_id === lobby.creator_id)?.username ?? "—"} · Cuando todos estén ✅ Listo se crean los canales de voz` })
+    .setFooter({ text: "Cuando todos estén ✅ Listo se crean los canales de voz" })
     .setTimestamp();
+
+  if (creator) {
+    embed.setAuthor({ name: `Sala creada por ${creator.username}`, iconURL: creator.avatar_url ?? undefined });
+  }
 
   if (lobby.match_code) {
     embed.addFields({

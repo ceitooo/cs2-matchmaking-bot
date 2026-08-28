@@ -44,7 +44,7 @@ module.exports = {
         return interaction.reply({ content: "Esta sala ya no existe.", flags: 64 });
       }
 
-      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
+      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username, interaction.user.displayAvatarURL());
       const alreadyIn = db.prepare("SELECT 1 FROM lobby_players WHERE lobby_id = ? AND user_id = ?").get(lobbyId, interaction.user.id);
       if (alreadyIn) {
         return interaction.reply({ content: "Ya estás en esta sala.", flags: 64 });
@@ -83,7 +83,7 @@ module.exports = {
 
     if (action === "lobby_join_a" || action === "lobby_join_b") {
       const team = action === "lobby_join_a" ? "A" : "B";
-      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
+      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username, interaction.user.displayAvatarURL());
 
       if (!player.steam_id) {
         return interaction.reply({ content: "Debes vincular tu cuenta de Steam antes de unirte. Usa `/vincular-steam`.", flags: 64 });

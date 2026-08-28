@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS matches (
 
 for (const migration of [
   "ALTER TABLE players ADD COLUMN steam_id TEXT",
-  "ALTER TABLE players ADD COLUMN steam_name TEXT"
+  "ALTER TABLE players ADD COLUMN steam_name TEXT",
+  "ALTER TABLE players ADD COLUMN avatar_url TEXT"
 ]) {
   try {
     database.exec(migration);
@@ -89,15 +90,15 @@ const db = {
   }
 };
 
-function getOrCreatePlayer(userId, username) {
+function getOrCreatePlayer(userId, username, avatarUrl) {
   const existing = db.prepare("SELECT * FROM players WHERE user_id = ?").get(userId);
   if (existing) {
-    if (existing.username !== username) {
-      db.prepare("UPDATE players SET username = ? WHERE user_id = ?").run(username, userId);
+    if (existing.username !== username || (avatarUrl && existing.avatar_url !== avatarUrl)) {
+      db.prepare("UPDATE players SET username = ?, avatar_url = COALESCE(?, avatar_url) WHERE user_id = ?").run(username, avatarUrl ?? null, userId);
     }
-    return existing;
+    return db.prepare("SELECT * FROM players WHERE user_id = ?").get(userId);
   }
-  db.prepare("INSERT INTO players (user_id, username) VALUES (?, ?)").run(userId, username);
+  db.prepare("INSERT INTO players (user_id, username, avatar_url) VALUES (?, ?, ?)").run(userId, username, avatarUrl ?? null);
   return db.prepare("SELECT * FROM players WHERE user_id = ?").get(userId);
 }
 
