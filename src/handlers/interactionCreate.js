@@ -3,6 +3,8 @@ const { db, getOrCreatePlayer } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
+const { getGuildPlayer, destroyGuildPlayer, skipTrack } = require("../music/player");
+const { refreshMusicPanel } = require("../music/panel");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
 
@@ -119,6 +121,37 @@ module.exports = {
     }
 
     if (!interaction.isButton()) return;
+
+    if (interaction.customId.startsWith("music_")) {
+      const state = getGuildPlayer(interaction.guildId);
+
+      if (interaction.customId === "music_pauseresume") {
+        if (!state?.current) return interaction.reply({ content: "No hay nada sonando.", flags: 64 });
+        if (state.audioPlayer.state.status === "paused") state.audioPlayer.unpause();
+        else state.audioPlayer.pause();
+      } else if (interaction.customId === "music_skip") {
+        if (!state?.current) return interaction.reply({ content: "No hay nada sonando.", flags: 64 });
+        skipTrack(state);
+      } else if (interaction.customId === "music_stop") {
+        if (!state) return interaction.reply({ content: "No hay nada reproduciéndose.", flags: 64 });
+        destroyGuildPlayer(interaction.guildId);
+      } else if (interaction.customId === "music_volup") {
+        if (!state) return interaction.reply({ content: "No hay nada reproduciéndose.", flags: 64 });
+        state.volume = Math.min(100, state.volume + 10);
+        state.resource?.volume?.setVolume(state.volume / 100);
+      } else if (interaction.customId === "music_voldown") {
+        if (!state) return interaction.reply({ content: "No hay nada reproduciéndose.", flags: 64 });
+        state.volume = Math.max(0, state.volume - 10);
+        state.resource?.volume?.setVolume(state.volume / 100);
+      } else if (interaction.customId === "music_loop") {
+        if (!state) return interaction.reply({ content: "No hay nada reproduciéndose.", flags: 64 });
+        state.loop = state.loop === "off" ? "track" : state.loop === "track" ? "queue" : "off";
+      }
+
+      await interaction.deferUpdate().catch(() => {});
+      await refreshMusicPanel(interaction.guild);
+      return;
+    }
 
     if (interaction.customId.startsWith("qq_join:")) {
       const [, queueId] = interaction.customId.split(":");
