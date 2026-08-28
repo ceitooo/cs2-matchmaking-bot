@@ -43,8 +43,7 @@ function buildLobbyPanel(lobbyId) {
   const playerEmbeds = [...teamA, ...teamB].slice(0, 10).map((p) =>
     new EmbedBuilder()
       .setAuthor({
-        name: `${p.ready ? "✅" : "⬜"} ${p.username} — ${p.team === "A" ? lobby.team_a_name : lobby.team_b_name}`,
-        iconURL: p.avatar_url ?? undefined
+        name: `${p.ready ? "✅" : "⬜"} ${p.username} — ${p.team === "A" ? lobby.team_a_name : lobby.team_b_name}`
       })
       .setColor(p.team === "A" ? TEAM_A_COLOR : TEAM_B_COLOR)
   );
