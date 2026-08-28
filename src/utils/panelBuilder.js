@@ -10,6 +10,8 @@ function buildQueuePanel() {
     )
     .all();
 
+  const meta = db.prepare("SELECT match_code FROM queue_meta WHERE id = 1").get();
+
   const embed = new EmbedBuilder()
     .setTitle("🎯 Matchmaking CS2")
     .setColor(0xff6b35)
@@ -20,6 +22,13 @@ function buildQueuePanel() {
     )
     .setFooter({ text: `${queued.length}/10 jugadores en cola` })
     .setTimestamp();
+
+  if (meta?.match_code) {
+    embed.addFields({
+      name: "🔑 Código de matchmaking privado de CS2",
+      value: `\`\`\`${meta.match_code}\`\`\`\nÚsalo en CS2: Jugar → Matchmaking Privado → Introducir código`
+    });
+  }
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("queue_join").setLabel("Unirse a la cola").setStyle(ButtonStyle.Success).setEmoji("✅"),

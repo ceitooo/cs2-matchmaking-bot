@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS queue (
   FOREIGN KEY (user_id) REFERENCES players(user_id)
 );
 
+CREATE TABLE IF NOT EXISTS queue_meta (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  match_code TEXT,
+  created_by TEXT
+);
+
 CREATE TABLE IF NOT EXISTS matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,

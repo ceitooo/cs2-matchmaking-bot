@@ -15,6 +15,10 @@ async function tryStartMatch(guild, textChannel) {
 
   if (queued.length < QUEUE_SIZE) return null;
 
+  const meta = db.prepare("SELECT match_code FROM queue_meta WHERE id = 1").get();
+  const matchCode = meta?.match_code ?? null;
+  db.prepare("DELETE FROM queue_meta WHERE id = 1").run();
+
   const userIds = queued.map((p) => p.user_id);
   const removeFromQueue = db.prepare("DELETE FROM queue WHERE user_id = ?");
   const markInMatch = db.prepare("UPDATE players SET in_queue = 0, in_match = 1 WHERE user_id = ?");
@@ -79,8 +83,15 @@ async function tryStartMatch(guild, textChannel) {
       { name: `🅰️ Equipo A (ELO prom. ${teamAAvg})`, value: teamA.map((p) => `${p.username} — ${p.elo}`).join("\n"), inline: true },
       { name: `🅱️ Equipo B (ELO prom. ${teamBAvg})`, value: teamB.map((p) => `${p.username} — ${p.elo}`).join("\n"), inline: true }
     )
-    .setDescription(`Únanse a sus canales de voz y jueguen en el servidor CS2. Cuando termine, reporten el resultado abajo.`)
+    .setDescription(`Únanse a sus canales de voz y entren a la partida con el código de abajo. Cuando termine, un admin confirma el resultado.`)
     .setFooter({ text: "El resultado lo confirma un admin con /resultado" });
+
+  if (matchCode) {
+    embed.addFields({
+      name: "🔑 Código de matchmaking privado",
+      value: `\`\`\`${matchCode}\`\`\`\nEn CS2: Jugar → Matchmaking Privado → Introducir código`
+    });
+  }
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`match_win_a_${matchId}`).setLabel("Ganó Equipo A").setStyle(ButtonStyle.Primary),

@@ -1,7 +1,12 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
 const { db, getOrCreatePlayer } = require("../db/database");
 const { buildQueuePanel } = require("../utils/panelBuilder");
 const { tryStartMatch } = require("../utils/matchmaking");
+
+function joinQueue(userId) {
+  db.prepare("INSERT INTO queue (user_id, joined_at) VALUES (?, ?)").run(userId, Date.now());
+  db.prepare("UPDATE players SET in_queue = 1 WHERE user_id = ?").run(userId);
+}
 
 module.exports = {
   name: "interactionCreate",
@@ -23,6 +28,35 @@ module.exports = {
       return;
     }
 
+    if (interaction.isModalSubmit() && interaction.customId === "queue_code_modal") {
+      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
+
+      const stillEmpty = !db.prepare("SELECT 1 FROM queue LIMIT 1").get();
+      if (!stillEmpty) {
+        return interaction.reply({ content: "Alguien más ya inició la cola mientras escribías el código. Únete normalmente.", flags: 64 });
+      }
+      if (player.in_match) {
+        return interaction.reply({ content: "Ya estás en una partida en curso.", flags: 64 });
+      }
+
+      const code = interaction.fields.getTextInputValue("code").trim();
+
+      db.prepare("INSERT INTO queue_meta (id, match_code, created_by) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET match_code = excluded.match_code, created_by = excluded.created_by")
+        .run(code, interaction.user.id);
+
+      joinQueue(interaction.user.id);
+
+      await interaction.reply({ content: "✅ Código guardado y te uniste a la cola.", flags: 64 });
+
+      const channel = await interaction.client.channels.fetch(interaction.channelId).catch(() => null);
+      if (channel) {
+        const messages = await channel.messages.fetch({ limit: 20 }).catch(() => null);
+        const panelMessage = messages?.find((m) => m.author.id === interaction.client.user.id && m.components.length > 0);
+        if (panelMessage) await panelMessage.edit(buildQueuePanel()).catch(() => {});
+      }
+      return;
+    }
+
     if (!interaction.isButton()) return;
 
     if (interaction.customId === "queue_join") {
@@ -40,8 +74,24 @@ module.exports = {
         return interaction.reply({ content: "Ya estás en la cola.", flags: 64 });
       }
 
-      db.prepare("INSERT INTO queue (user_id, joined_at) VALUES (?, ?)").run(interaction.user.id, Date.now());
-      db.prepare("UPDATE players SET in_queue = 1 WHERE user_id = ?").run(interaction.user.id);
+      const queueEmpty = !db.prepare("SELECT 1 FROM queue LIMIT 1").get();
+
+      if (queueEmpty) {
+        const modal = new ModalBuilder().setCustomId("queue_code_modal").setTitle("Código de matchmaking privado");
+
+        const input = new TextInputBuilder()
+          .setCustomId("code")
+          .setLabel("Código de CS2 (Jugar → Matchmaking Privado)")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("XXXXX-XXXXX-XXXXX-XXXX")
+          .setRequired(true)
+          .setMaxLength(40);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(input));
+        return interaction.showModal(modal);
+      }
+
+      joinQueue(interaction.user.id);
 
       await interaction.update(buildQueuePanel());
 
@@ -58,6 +108,11 @@ module.exports = {
 
       if (removed.changes === 0) {
         return interaction.reply({ content: "No estabas en la cola.", flags: 64 });
+      }
+
+      const queueNowEmpty = !db.prepare("SELECT 1 FROM queue LIMIT 1").get();
+      if (queueNowEmpty) {
+        db.prepare("DELETE FROM queue_meta WHERE id = 1").run();
       }
 
       await interaction.update(buildQueuePanel());
