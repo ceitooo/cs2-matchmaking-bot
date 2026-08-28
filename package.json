@@ -1,0 +1,16 @@
+{
+  "name": "cs2-matchmaking-bot",
+  "version": "1.0.0",
+  "description": "Bot de Discord para matchmaking estilo CS2 con paneles, cola y ELO",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy-commands": "node src/deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  }
+}
