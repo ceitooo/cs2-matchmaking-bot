@@ -62,8 +62,11 @@ module.exports = {
     }
 
     embed.addFields({
-      name: "Leetify",
-      value: `[Ver perfil completo (Aim Rating, K/D, Win Rate, etc.)](https://leetify.com/app/profile/${player.steam_id})`
+      name: "Más stats (enlaces externos)",
+      value:
+        `[Leetify](https://leetify.com/app/profile/${player.steam_id}) — Aim Rating, K/D, Win Rate\n` +
+        `[CS2Tracker](https://cs2tracker.gg/stats/${player.steam_id}) — Premier Rating, detección de cheating\n` +
+        `[CSTracker](https://cstracker.gg/players/${player.steam_id}) — historial y stats generales`
     });
 
     const smurfFlags = evaluateSmurfRisk(profile, playtimeMinutes);
