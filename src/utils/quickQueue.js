@@ -148,8 +148,11 @@ async function createTempVoiceChannel(guild, queueId) {
     position: maxPosition + 1,
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel] },
-      { id: ACCESO_ROLE_ID, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Speak] },
-      ...players.map((p) => ({ id: p.user_id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Speak] }))
+      { id: ACCESO_ROLE_ID, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Speak, PermissionFlagsBits.UseVAD] },
+      ...players.map((p) => ({
+        id: p.user_id,
+        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Speak, PermissionFlagsBits.UseVAD]
+      }))
     ]
   });
 

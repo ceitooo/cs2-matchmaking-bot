@@ -82,7 +82,10 @@ async function checkAllReadyAndSyncChannels(guild, lobbyId) {
     parent: category.id,
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect] },
-      ...teamA.map((p) => ({ id: p.user_id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.ViewChannel] }))
+      ...teamA.map((p) => ({
+        id: p.user_id,
+        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.UseVAD]
+      }))
     ]
   });
 
@@ -92,7 +95,10 @@ async function checkAllReadyAndSyncChannels(guild, lobbyId) {
     parent: category.id,
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect] },
-      ...teamB.map((p) => ({ id: p.user_id, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.ViewChannel] }))
+      ...teamB.map((p) => ({
+        id: p.user_id,
+        allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.UseVAD]
+      }))
     ]
   });
 
