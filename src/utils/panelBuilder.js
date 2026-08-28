@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require("discord.js");
 const { db } = require("../db/database");
 
 const MAX_PER_TEAM = 5;
@@ -60,10 +60,25 @@ function buildLobbyPanel(lobbyId) {
     new ButtonBuilder().setCustomId(`lobby_finalize:${lobbyId}`).setLabel("Finalizar sala").setStyle(ButtonStyle.Secondary).setEmoji("🏁")
   );
 
+  const components = [row1, row2];
+
+  if (players.length > 0) {
+    const kickMenu = new StringSelectMenuBuilder()
+      .setCustomId(`lobby_kick:${lobbyId}`)
+      .setPlaceholder("Expulsar jugador (solo el creador)")
+      .addOptions(
+        players.slice(0, 25).map((p) => ({
+          label: `${p.username} — ${p.team === "A" ? lobby.team_a_name : lobby.team_b_name}`,
+          value: p.user_id
+        }))
+      );
+    components.push(new ActionRowBuilder().addComponents(kickMenu));
+  }
+
   return {
     content: lines.join("\n"),
     embeds: playerEmbeds,
-    components: [row1, row2]
+    components
   };
 }
 

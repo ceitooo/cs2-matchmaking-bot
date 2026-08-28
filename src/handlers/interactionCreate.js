@@ -1,7 +1,8 @@
-const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
 const { db, getOrCreatePlayer } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
-const { checkAllReadyAndSyncChannels, finalizeLobby } = require("../utils/matchmaking");
+const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
+const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
 
@@ -17,6 +18,13 @@ async function refreshPanel(interaction, lobbyId) {
   } else {
     await interaction.update(payload).catch(() => {});
   }
+}
+
+async function dmMatchCode(interaction, lobby) {
+  if (!lobby.match_code) return;
+  await interaction.user
+    .send(`🔑 Código de matchmaking privado para la sala #${lobby.id}:\n\`\`\`${lobby.match_code}\`\`\``)
+    .catch(() => {});
 }
 
 module.exports = {
@@ -46,7 +54,7 @@ module.exports = {
         return interaction.reply({ content: "Esta sala ya no existe.", flags: 64 });
       }
 
-      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username, interaction.user.displayAvatarURL());
+      getOrCreatePlayer(interaction.user.id, interaction.user.username, interaction.user.displayAvatarURL());
       const alreadyIn = db.prepare("SELECT 1 FROM lobby_players WHERE lobby_id = ? AND user_id = ?").get(lobbyId, interaction.user.id);
       if (alreadyIn) {
         return interaction.reply({ content: "Ya estás en esta sala.", flags: 64 });
@@ -70,8 +78,14 @@ module.exports = {
         team === "B" ? "B" : "A",
         Date.now()
       );
+      db.prepare("UPDATE players SET lobbies_created = lobbies_created + 1 WHERE user_id = ?").run(interaction.user.id);
 
-      await interaction.reply({ content: "✅ Código guardado, te uniste a la sala como creador.", flags: 64 });
+      await interaction.reply({ content: "✅ Código guardado, te uniste a la sala como creador. Te lo mandé también por DM.", flags: 64 });
+
+      const updatedLobby = db.prepare("SELECT * FROM lobbies WHERE id = ?").get(lobbyId);
+      await dmMatchCode(interaction, updatedLobby);
+
+      scheduleLobbyTimers(interaction.guild, lobbyId, buildLobbyPanel);
 
       const channel = await interaction.client.channels.fetch(lobby.channel_id).catch(() => null);
       if (channel && lobby.message_id) {
@@ -81,7 +95,39 @@ module.exports = {
       return;
     }
 
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("lobby_kick:")) {
+      const { lobbyId } = parseId(interaction.customId);
+      const lobby = db.prepare("SELECT * FROM lobbies WHERE id = ?").get(lobbyId);
+      if (!lobby || lobby.status === "finished") {
+        return interaction.reply({ content: "Esta sala ya no existe.", flags: 64 });
+      }
+
+      if (interaction.user.id !== lobby.creator_id && !interaction.memberPermissions?.has("ManageGuild")) {
+        return interaction.reply({ content: "Solo quien creó la sala (o un admin) puede expulsar jugadores.", flags: 64 });
+      }
+
+      const targetId = interaction.values[0];
+      if (targetId === lobby.creator_id) {
+        return interaction.reply({ content: "No puedes expulsarte a ti mismo. Usa \"Finalizar sala\" si quieres cerrarla.", flags: 64 });
+      }
+
+      db.prepare("DELETE FROM lobby_players WHERE lobby_id = ? AND user_id = ?").run(lobbyId, targetId);
+      await interaction.client.users.send(targetId, `Fuiste expulsado de la sala #${lobbyId}.`).catch(() => {});
+
+      await refreshPanel(interaction, lobbyId);
+      return;
+    }
+
     if (!interaction.isButton()) return;
+
+    if (interaction.customId.startsWith("qq_join:")) {
+      const [, queueId] = interaction.customId.split(":");
+      return joinQuickQueue(interaction, Number(queueId));
+    }
+    if (interaction.customId.startsWith("qq_leave:")) {
+      const [, queueId] = interaction.customId.split(":");
+      return leaveQuickQueue(interaction, Number(queueId));
+    }
 
     const { action, lobbyId } = parseId(interaction.customId);
     if (!action.startsWith("lobby_")) return;
@@ -164,6 +210,7 @@ module.exports = {
       );
 
       await refreshPanel(interaction, lobbyId);
+      await dmMatchCode(interaction, lobby);
       return;
     }
 
@@ -198,6 +245,7 @@ module.exports = {
       }
 
       await interaction.deferUpdate().catch(() => {});
+      clearLobbyTimers(lobbyId);
       await finalizeLobby(interaction.guild, lobbyId);
       await interaction.message.edit(buildLobbyPanel(lobbyId)).catch(() => {});
       return;

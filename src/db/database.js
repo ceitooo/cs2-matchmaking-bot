@@ -51,6 +51,31 @@ CREATE TABLE IF NOT EXISTS lobby_players (
   PRIMARY KEY (lobby_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS quick_queues (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  message_id TEXT,
+  mode TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  voice_channel_id TEXT,
+  first_joined_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS quick_queue_players (
+  queue_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
+  joined_at INTEGER NOT NULL,
+  PRIMARY KEY (queue_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS quick_voice_channels (
+  channel_id TEXT PRIMARY KEY,
+  guild_id TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -70,7 +95,10 @@ for (const migration of [
   "ALTER TABLE players ADD COLUMN steam_name TEXT",
   "ALTER TABLE players ADD COLUMN avatar_url TEXT",
   "ALTER TABLE lobbies ADD COLUMN team_a_name TEXT NOT NULL DEFAULT 'Equipo A'",
-  "ALTER TABLE lobbies ADD COLUMN team_b_name TEXT NOT NULL DEFAULT 'Equipo B'"
+  "ALTER TABLE lobbies ADD COLUMN team_b_name TEXT NOT NULL DEFAULT 'Equipo B'",
+  "ALTER TABLE lobbies ADD COLUMN opened_by TEXT",
+  "ALTER TABLE players ADD COLUMN lobbies_played INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE players ADD COLUMN lobbies_created INTEGER NOT NULL DEFAULT 0"
 ]) {
   try {
     database.exec(migration);

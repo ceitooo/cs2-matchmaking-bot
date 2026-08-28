@@ -1,6 +1,17 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { getOrCreatePlayer } = require("../db/database");
 
+function computeBadges(player) {
+  const badges = [];
+  if (player.steam_id) badges.push("✅ Steam Verificado");
+  if (player.lobbies_created >= 1) badges.push("🎬 Anfitrión");
+  if (player.lobbies_created >= 5) badges.push("🎥 Anfitrión Frecuente");
+  if (player.lobbies_played >= 1) badges.push("🎮 Primera Partida");
+  if (player.lobbies_played >= 10) badges.push("🔥 Jugador Activo");
+  if (player.lobbies_played >= 50) badges.push("🏅 Veterano");
+  return badges;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("stats")
@@ -13,6 +24,7 @@ module.exports = {
 
     const total = player.wins + player.losses;
     const winrate = total > 0 ? ((player.wins / total) * 100).toFixed(1) : "0.0";
+    const badges = computeBadges(player);
 
     const embed = new EmbedBuilder()
       .setTitle(`📊 Stats de ${target.username}`)
@@ -23,8 +35,14 @@ module.exports = {
         { name: "Victorias", value: `${player.wins}`, inline: true },
         { name: "Derrotas", value: `${player.losses}`, inline: true },
         { name: "Winrate", value: `${winrate}%`, inline: true },
+        { name: "Salas jugadas", value: `${player.lobbies_played}`, inline: true },
+        { name: "Salas creadas", value: `${player.lobbies_created}`, inline: true },
         { name: "Steam", value: player.steam_id ? "Vinculado ✅ — usa `/steam-stats`" : "No vinculado — usa `/vincular-steam`", inline: true }
       );
+
+    if (badges.length) {
+      embed.addFields({ name: "🏆 Insignias", value: badges.join("\n") });
+    }
 
     await interaction.reply({ embeds: [embed], flags: 64 });
   }

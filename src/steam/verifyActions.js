@@ -1,6 +1,6 @@
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 const { db } = require("../db/database");
-const { fetchSteamProfile } = require("../utils/steamStats");
+const { fetchSteamProfile, fetchCs2PlaytimeMinutes, evaluateSmurfRisk } = require("../utils/steamStats");
 
 const VERIFIED_ROLE_NAME = "✅ Steam Verificado";
 const VERIFIED_ROLE_COLOR = 0x3498db;
@@ -31,6 +31,8 @@ async function completeVerification(client, discordUserId, steamId) {
   if (!member) return;
 
   const profile = await fetchSteamProfile(steamId).catch(() => null);
+  const playtimeMinutes = await fetchCs2PlaytimeMinutes(steamId).catch(() => null);
+  const smurfFlags = evaluateSmurfRisk(profile, playtimeMinutes);
   const steamName = profile?.personaname ?? null;
 
   if (steamName) {
@@ -58,6 +60,13 @@ async function completeVerification(client, discordUserId, steamId) {
       `- Ya puedes unirte a la cola de matchmaking`
     )
     .setThumbnail(profile?.avatarfull ?? null);
+
+  if (smurfFlags.length) {
+    embed.addFields({
+      name: "⚠️ Nota",
+      value: `Tu cuenta tiene señales de cuenta nueva/poco jugada: ${smurfFlags.join(", ")}. No pasa nada, solo es informativo para los admins si preguntas de trampas.`
+    });
+  }
 
   await member.send({ embeds: [embed] }).catch(() => {});
 }

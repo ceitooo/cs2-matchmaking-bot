@@ -35,4 +35,36 @@ async function fetchSteamProfile(steamId) {
   return data?.response?.players?.[0] ?? null;
 }
 
-module.exports = { fetchCs2Stats, fetchSteamProfile };
+async function fetchCs2PlaytimeMinutes(steamId) {
+  const apiKey = process.env.STEAM_API_KEY;
+  if (!apiKey) return null;
+
+  const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${apiKey}&steamid=${steamId}&appids_filter[0]=${CS2_APP_ID}&include_appinfo=false`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const game = data?.response?.games?.find((g) => g.appid === CS2_APP_ID);
+  return game ? game.playtime_forever : null; // null si el perfil no comparte esta info
+}
+
+const SMURF_MIN_ACCOUNT_AGE_DAYS = 30;
+const SMURF_MIN_CS2_HOURS = 50;
+
+function evaluateSmurfRisk(profile, playtimeMinutes) {
+  const flags = [];
+
+  if (profile?.timecreated) {
+    const ageDays = Math.floor((Date.now() / 1000 - profile.timecreated) / 86400);
+    if (ageDays < SMURF_MIN_ACCOUNT_AGE_DAYS) flags.push(`cuenta de Steam creada hace solo ${ageDays} días`);
+  }
+
+  if (typeof playtimeMinutes === "number") {
+    const hours = Math.round(playtimeMinutes / 60);
+    if (hours < SMURF_MIN_CS2_HOURS) flags.push(`solo ${hours}h jugadas en CS2`);
+  }
+
+  return flags;
+}
+
+module.exports = { fetchCs2Stats, fetchSteamProfile, fetchCs2PlaytimeMinutes, evaluateSmurfRisk };

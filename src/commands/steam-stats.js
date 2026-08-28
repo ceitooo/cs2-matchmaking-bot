@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { getOrCreatePlayer } = require("../db/database");
-const { fetchCs2Stats, fetchSteamProfile } = require("../utils/steamStats");
+const { fetchCs2Stats, fetchSteamProfile, fetchCs2PlaytimeMinutes, evaluateSmurfRisk } = require("../utils/steamStats");
 const { fetchFaceitStats } = require("../utils/faceitStats");
 
 module.exports = {
@@ -20,10 +20,11 @@ module.exports = {
       });
     }
 
-    const [cs2Stats, profile, faceit] = await Promise.all([
+    const [cs2Stats, profile, faceit, playtimeMinutes] = await Promise.all([
       fetchCs2Stats(player.steam_id),
       fetchSteamProfile(player.steam_id),
-      fetchFaceitStats(player.steam_id)
+      fetchFaceitStats(player.steam_id),
+      fetchCs2PlaytimeMinutes(player.steam_id)
     ]);
 
     if (!cs2Stats) {
@@ -64,6 +65,11 @@ module.exports = {
       name: "Leetify",
       value: `[Ver perfil completo (Aim Rating, K/D, Win Rate, etc.)](https://leetify.com/app/profile/${player.steam_id})`
     });
+
+    const smurfFlags = evaluateSmurfRisk(profile, playtimeMinutes);
+    if (smurfFlags.length) {
+      embed.addFields({ name: "⚠️ Señales de cuenta nueva", value: smurfFlags.join(", ") });
+    }
 
     await interaction.reply({ embeds: [embed], flags: 64 });
   }
