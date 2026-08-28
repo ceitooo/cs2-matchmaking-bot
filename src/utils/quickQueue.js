@@ -139,9 +139,13 @@ async function createTempVoiceChannel(guild, queueId) {
   const modeInfo = MODES[queue.mode];
   const players = db.prepare("SELECT * FROM quick_queue_players WHERE queue_id = ?").all(queueId);
 
+  const allChannels = await guild.channels.fetch();
+  const maxPosition = Math.max(0, ...allChannels.filter((c) => c).map((c) => c.rawPosition ?? 0));
+
   const voice = await guild.channels.create({
     name: modeInfo.channelName,
     type: ChannelType.GuildVoice,
+    position: maxPosition + 1,
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel] },
       { id: ACCESO_ROLE_ID, allow: [PermissionFlagsBits.Connect, PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Speak] },
@@ -156,7 +160,25 @@ async function createTempVoiceChannel(guild, queueId) {
   for (const p of players) {
     const member = await guild.members.fetch(p.user_id).catch(() => null);
     if (member?.voice?.channelId) await member.voice.setChannel(voice.id).catch(() => {});
-    await member?.send(`✅ ¡Cola de **${modeInfo.label}** completa! Canal de voz creado: ${voice.toString()} en **${guild.name}**.`).catch(() => {});
+  }
+
+  const textChannel = await guild.channels.fetch(queue.channel_id).catch(() => null);
+  if (textChannel) {
+    const thread = await textChannel.threads
+      .create({
+        name: `Cola ${modeInfo.label} completa`,
+        type: ChannelType.PrivateThread,
+        invitable: false,
+        autoArchiveDuration: 60
+      })
+      .catch(() => null);
+
+    if (thread) {
+      for (const p of players) {
+        await thread.members.add(p.user_id).catch(() => {});
+      }
+      await thread.send(`✅ ¡Cola de **${modeInfo.label}** completa! Canal de voz: ${voice.toString()}`).catch(() => {});
+    }
   }
 }
 
