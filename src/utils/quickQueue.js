@@ -48,29 +48,27 @@ function buildQuickQueuePanel(queueId) {
   const modeInfo = MODES[queue.mode];
   const players = db
     .prepare(
-      `SELECT quick_queue_players.*, players.username FROM quick_queue_players
+      `SELECT quick_queue_players.*, players.username, players.avatar_url FROM quick_queue_players
        JOIN players ON players.user_id = quick_queue_players.user_id
        WHERE queue_id = ? ORDER BY joined_at ASC`
     )
     .all(queueId);
 
-  const embed = new EmbedBuilder()
-    .setTitle(`🎯 Cola de ${modeInfo.label}`)
-    .setColor(0xff6b35)
-    .setDescription(
-      players.length
-        ? players.map((p, i) => `**${i + 1}.** ${p.username}`).join("\n")
-        : "Cola vacía. ¡Sé el primero en unirte!"
-    )
-    .setFooter({ text: `${players.length}/${modeInfo.size} jugadores · se vacía sola tras 2h sin completarse` })
-    .setTimestamp();
+  const content =
+    `## 🎯 Cola de ${modeInfo.label}\n` +
+    (players.length ? "" : "_Cola vacía. ¡Sé el primero en unirte!_\n") +
+    `${players.length}/${modeInfo.size} jugadores · se vacía sola tras 2h sin completarse`;
+
+  const playerEmbeds = players
+    .slice(0, 10)
+    .map((p, i) => new EmbedBuilder().setAuthor({ name: `${i + 1}. ${p.username}`, iconURL: p.avatar_url || undefined }).setColor(0xff6b35));
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`qq_join:${queueId}`).setLabel("Unirse").setStyle(ButtonStyle.Success).setEmoji("✅").setDisabled(players.length >= modeInfo.size),
     new ButtonBuilder().setCustomId(`qq_leave:${queueId}`).setLabel("Salir").setStyle(ButtonStyle.Danger).setEmoji("❌")
   );
 
-  return { embeds: [embed], components: [row] };
+  return { content, embeds: playerEmbeds, components: [row] };
 }
 
 async function createQuickQueue(interaction, mode) {
@@ -158,13 +156,7 @@ async function createTempVoiceChannel(guild, queueId) {
   for (const p of players) {
     const member = await guild.members.fetch(p.user_id).catch(() => null);
     if (member?.voice?.channelId) await member.voice.setChannel(voice.id).catch(() => {});
-  }
-
-  const textChannel = await guild.channels.fetch(queue.channel_id).catch(() => null);
-  if (textChannel) {
-    await textChannel
-      .send(`✅ ¡Cola de **${modeInfo.label}** completa! Canal de voz creado: ${voice} — ${players.map((p) => `<@${p.user_id}>`).join(" ")}`)
-      .catch(() => {});
+    await member?.send(`✅ ¡Cola de **${modeInfo.label}** completa! Canal de voz creado: ${voice.toString()} en **${guild.name}**.`).catch(() => {});
   }
 }
 
