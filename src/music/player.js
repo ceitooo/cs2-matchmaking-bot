@@ -63,9 +63,17 @@ function createGuildPlayer(guild, voiceChannel, textChannel) {
   return state;
 }
 
+function killCurrentProcess(state) {
+  if (state.currentProcess && !state.currentProcess.killed) {
+    state.currentProcess.kill("SIGKILL");
+  }
+  state.currentProcess = null;
+}
+
 function destroyGuildPlayer(guildId) {
   const state = players.get(guildId);
   if (!state) return;
+  killCurrentProcess(state);
   state.audioPlayer.stop();
   state.connection.destroy();
   players.delete(guildId);
@@ -87,7 +95,10 @@ async function playNext(state) {
 
   state.current = track;
 
+  killCurrentProcess(state);
   const stream = await getAudioStream(track.url);
+  state.currentProcess = stream.process ?? null;
+
   const resource = createAudioResource(stream.stream, {
     inputType: stream.type ?? StreamType.Arbitrary,
     inlineVolume: true

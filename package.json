@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "deploy-commands": "node src/deploy-commands.js"
+    "deploy-commands": "node src/deploy-commands.js",
+    "postinstall": "node scripts/download-ytdlp.js"
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",

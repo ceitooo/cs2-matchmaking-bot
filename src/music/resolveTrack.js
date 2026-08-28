@@ -1,7 +1,14 @@
+const path = require("node:path");
+const fs = require("node:fs");
+const { spawn } = require("node:child_process");
 const playdl = require("play-dl");
+const { ensureNetscapeCookiesFile } = require("./ytdlpCookies");
 
 const SPOTIFY_TRACK_REGEX = /open\.spotify\.com\/(?:intl-\w+\/)?track\/([a-zA-Z0-9]+)/;
 const YOUTUBE_URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i;
+
+const YTDLP_PATH = path.join(__dirname, "..", "..", "bin", process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp");
+const cookiesFile = ensureNetscapeCookiesFile();
 
 async function spotifyUrlToSearchQuery(url) {
   const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`);
@@ -45,9 +52,40 @@ async function resolveTrack(query, requestedBy) {
   };
 }
 
-async function getAudioStream(url) {
-  // quality: 2 = la mejor calidad de audio disponible en YouTube (suele venir en Opus, sin perder calidad al reencodear)
-  return playdl.stream(url, { quality: 2 });
+/**
+ * Extrae el audio con yt-dlp (mucho más resistente a los cambios de YouTube que las librerías de Node)
+ * y lo entrega como un stream para que @discordjs/voice lo transcodifique con ffmpeg.
+ */
+function getAudioStream(url) {
+  if (!fs.existsSync(YTDLP_PATH)) {
+    throw new Error("yt-dlp no está instalado. Corre `node scripts/download-ytdlp.js`.");
+  }
+
+  const args = [
+    "-f",
+    "bestaudio",
+    "--no-playlist",
+    "--quiet",
+    "--no-warnings",
+    "--js-runtimes",
+    `node:${process.execPath}`,
+    "-o",
+    "-",
+    url
+  ];
+  if (cookiesFile) args.unshift("--cookies", cookiesFile);
+
+  const child = spawn(YTDLP_PATH, args, { stdio: ["ignore", "pipe", "pipe"] });
+
+  let stderrBuffer = "";
+  child.stderr.on("data", (chunk) => {
+    stderrBuffer += chunk.toString();
+  });
+  child.on("close", (code) => {
+    if (code !== 0 && stderrBuffer) console.error("yt-dlp error:", stderrBuffer.slice(0, 500));
+  });
+
+  return { stream: child.stdout, type: undefined, process: child };
 }
 
 module.exports = { resolveTrack, getAudioStream };

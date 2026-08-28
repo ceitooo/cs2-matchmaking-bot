@@ -1,3 +1,5 @@
 node_modules/
 .env
 data/
+youtube-cookies.json
+bin/
