@@ -5,7 +5,7 @@ const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const { startSteamAuthServer } = require("./steam/server");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers]
 });
 
 client.commands = new Collection();
