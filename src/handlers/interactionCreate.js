@@ -3,6 +3,8 @@ const { db, getOrCreatePlayer } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby } = require("../utils/matchmaking");
 
+const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
+
 function parseId(customId) {
   const [action, lobbyId] = customId.split(":");
   return { action, lobbyId: Number(lobbyId) };
@@ -92,8 +94,9 @@ module.exports = {
     if (action === "lobby_join_a" || action === "lobby_join_b") {
       const team = action === "lobby_join_a" ? "A" : "B";
       const player = getOrCreatePlayer(interaction.user.id, interaction.user.username, interaction.user.displayAvatarURL());
+      const bypassSteam = interaction.member?.roles?.cache?.has(STEAM_BYPASS_ROLE_ID);
 
-      if (!player.steam_id) {
+      if (!player.steam_id && !bypassSteam) {
         return interaction.reply({ content: "Debes vincular tu cuenta de Steam antes de unirte. Usa `/vincular-steam`.", flags: 64 });
       }
 
