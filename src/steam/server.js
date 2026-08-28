@@ -1,5 +1,5 @@
 const express = require("express");
-const { db } = require("../db/database");
+const { db, getOrCreatePlayer } = require("../db/database");
 const { completeVerification } = require("./verifyActions");
 
 const PORT = process.env.STEAM_AUTH_PORT || 3000;
@@ -101,6 +101,8 @@ function startSteamAuthServer(client) {
       return res.status(400).send("No se pudo leer tu Steam ID.");
     }
 
+    const discordUser = await client.users.fetch(discordUserId).catch(() => null);
+    getOrCreatePlayer(discordUserId, discordUser?.username ?? discordUserId, discordUser?.displayAvatarURL());
     db.prepare("UPDATE players SET steam_id = ? WHERE user_id = ?").run(steamId, discordUserId);
 
     res.send(`
