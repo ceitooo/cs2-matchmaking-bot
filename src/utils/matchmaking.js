@@ -29,7 +29,7 @@ async function checkAllReadyAndSyncChannels(guild, lobbyId) {
   });
 
   const voiceA = await guild.channels.create({
-    name: "🔫 Equipo A",
+    name: `🔫 ${lobby.team_a_name}`,
     type: ChannelType.GuildVoice,
     parent: category.id,
     permissionOverwrites: [
@@ -39,7 +39,7 @@ async function checkAllReadyAndSyncChannels(guild, lobbyId) {
   });
 
   const voiceB = await guild.channels.create({
-    name: "🔫 Equipo B",
+    name: `🔫 ${lobby.team_b_name}`,
     type: ChannelType.GuildVoice,
     parent: category.id,
     permissionOverwrites: [

@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS lobbies (
   category_id TEXT,
   team_a_channel TEXT,
   team_b_channel TEXT,
+  team_a_name TEXT NOT NULL DEFAULT 'Equipo A',
+  team_b_name TEXT NOT NULL DEFAULT 'Equipo B',
   status TEXT NOT NULL DEFAULT 'open',
   created_at INTEGER NOT NULL
 );
@@ -66,7 +68,9 @@ CREATE TABLE IF NOT EXISTS matches (
 for (const migration of [
   "ALTER TABLE players ADD COLUMN steam_id TEXT",
   "ALTER TABLE players ADD COLUMN steam_name TEXT",
-  "ALTER TABLE players ADD COLUMN avatar_url TEXT"
+  "ALTER TABLE players ADD COLUMN avatar_url TEXT",
+  "ALTER TABLE lobbies ADD COLUMN team_a_name TEXT NOT NULL DEFAULT 'Equipo A'",
+  "ALTER TABLE lobbies ADD COLUMN team_b_name TEXT NOT NULL DEFAULT 'Equipo B'"
 ]) {
   try {
     database.exec(migration);

@@ -30,7 +30,7 @@ function buildLobbyPanel(lobbyId) {
 
   const lines = [`## 🎯 Sala de partida #${lobbyId}`];
   if (creator) lines.push(`Creada por **${creator.username}**`);
-  lines.push("", `**🅰️ Equipo A (${teamA.length}/${MAX_PER_TEAM})** · **🅱️ Equipo B (${teamB.length}/${MAX_PER_TEAM})**`);
+  lines.push("", `**🅰️ ${lobby.team_a_name} (${teamA.length}/${MAX_PER_TEAM})** · **🅱️ ${lobby.team_b_name} (${teamB.length}/${MAX_PER_TEAM})**`);
 
   if (lobby.match_code) {
     lines.push("", "🔑 **Código de matchmaking privado**", `\`\`\`${lobby.match_code}\`\`\``, "En CS2: Jugar → Matchmaking Privado → Introducir código");
@@ -43,15 +43,15 @@ function buildLobbyPanel(lobbyId) {
   const playerEmbeds = [...teamA, ...teamB].slice(0, 10).map((p) =>
     new EmbedBuilder()
       .setAuthor({
-        name: `${p.ready ? "✅" : "⬜"} ${p.username} — Equipo ${p.team}`,
+        name: `${p.ready ? "✅" : "⬜"} ${p.username} — ${p.team === "A" ? lobby.team_a_name : lobby.team_b_name}`,
         iconURL: p.avatar_url ?? undefined
       })
       .setColor(p.team === "A" ? TEAM_A_COLOR : TEAM_B_COLOR)
   );
 
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`lobby_join_a:${lobbyId}`).setLabel("Unirse Equipo A").setStyle(ButtonStyle.Primary).setDisabled(teamA.length >= MAX_PER_TEAM),
-    new ButtonBuilder().setCustomId(`lobby_join_b:${lobbyId}`).setLabel("Unirse Equipo B").setStyle(ButtonStyle.Primary).setDisabled(teamB.length >= MAX_PER_TEAM),
+    new ButtonBuilder().setCustomId(`lobby_join_a:${lobbyId}`).setLabel(`Unirse ${lobby.team_a_name}`).setStyle(ButtonStyle.Primary).setDisabled(teamA.length >= MAX_PER_TEAM),
+    new ButtonBuilder().setCustomId(`lobby_join_b:${lobbyId}`).setLabel(`Unirse ${lobby.team_b_name}`).setStyle(ButtonStyle.Primary).setDisabled(teamB.length >= MAX_PER_TEAM),
     new ButtonBuilder().setCustomId(`lobby_leave:${lobbyId}`).setLabel("Salir").setStyle(ButtonStyle.Danger)
   );
 

@@ -52,8 +52,16 @@ module.exports = {
 
       const code = interaction.fields.getTextInputValue("code").trim();
       const team = interaction.fields.getTextInputValue("team_hint") || "A";
+      const teamAName = interaction.fields.getTextInputValue("team_a_name").trim() || "Equipo A";
+      const teamBName = interaction.fields.getTextInputValue("team_b_name").trim() || "Equipo B";
 
-      db.prepare("UPDATE lobbies SET match_code = ?, creator_id = ? WHERE id = ?").run(code, interaction.user.id, lobbyId);
+      db.prepare("UPDATE lobbies SET match_code = ?, creator_id = ?, team_a_name = ?, team_b_name = ? WHERE id = ?").run(
+        code,
+        interaction.user.id,
+        teamAName,
+        teamBName,
+        lobbyId
+      );
       db.prepare("INSERT INTO lobby_players (lobby_id, user_id, team, ready, joined_at) VALUES (?, ?, ?, 0, ?)").run(
         lobbyId,
         interaction.user.id,
@@ -120,9 +128,27 @@ module.exports = {
           .setRequired(true)
           .setMaxLength(1);
 
+        const teamAName = new TextInputBuilder()
+          .setCustomId("team_a_name")
+          .setLabel("Nombre del Equipo A")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("Equipo A")
+          .setRequired(false)
+          .setMaxLength(50);
+
+        const teamBName = new TextInputBuilder()
+          .setCustomId("team_b_name")
+          .setLabel("Nombre del Equipo B")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("Equipo B")
+          .setRequired(false)
+          .setMaxLength(50);
+
         modal.addComponents(
           new ActionRowBuilder().addComponents(codeInput),
-          new ActionRowBuilder().addComponents(teamInput)
+          new ActionRowBuilder().addComponents(teamInput),
+          new ActionRowBuilder().addComponents(teamAName),
+          new ActionRowBuilder().addComponents(teamBName)
         );
         return interaction.showModal(modal);
       }
