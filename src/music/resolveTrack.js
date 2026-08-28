@@ -61,19 +61,11 @@ function getAudioStream(url) {
     throw new Error("yt-dlp no está instalado. Corre `node scripts/download-ytdlp.js`.");
   }
 
-  const args = [
-    "-f",
-    "bestaudio",
-    "--no-playlist",
-    "--quiet",
-    "--no-warnings",
-    "--js-runtimes",
-    `node:${process.execPath}`,
-    "-o",
-    "-",
-    url
-  ];
+  const args = ["-f", "bestaudio", "--no-playlist", "--js-runtimes", `node:${process.execPath}`, "-o", "-", url];
   if (cookiesFile) args.unshift("--cookies", cookiesFile);
+
+  console.log("yt-dlp binario:", YTDLP_PATH);
+  console.log("yt-dlp args:", args.join(" "));
 
   const child = spawn(YTDLP_PATH, args, { stdio: ["ignore", "pipe", "pipe"] });
 
@@ -82,7 +74,7 @@ function getAudioStream(url) {
     stderrBuffer += chunk.toString();
   });
   child.on("close", (code) => {
-    if (code !== 0 && stderrBuffer) console.error("yt-dlp error:", stderrBuffer.slice(0, 500));
+    console.log("yt-dlp salida completa (código " + code + "):\n" + stderrBuffer.slice(0, 2000));
   });
 
   return { stream: child.stdout, type: undefined, process: child };
