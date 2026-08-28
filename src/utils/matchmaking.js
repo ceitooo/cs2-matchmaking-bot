@@ -1,36 +1,30 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { ChannelType, PermissionFlagsBits } = require("discord.js");
 const { db } = require("../db/database");
-const { balanceTeams } = require("./elo");
 
-const QUEUE_SIZE = 10;
+async function deleteIfExists(guild, channelId) {
+  if (!channelId) return;
+  const channel = guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId).catch(() => null));
+  if (channel) await channel.delete().catch(() => {});
+}
 
-async function tryStartMatch(guild, textChannel) {
-  const queued = db
-    .prepare(
-      `SELECT players.* FROM queue
-       JOIN players ON players.user_id = queue.user_id
-       ORDER BY queue.joined_at ASC LIMIT ?`
-    )
-    .all(QUEUE_SIZE);
+async function checkAllReadyAndSyncChannels(guild, lobbyId) {
+  const lobby = db.prepare("SELECT * FROM lobbies WHERE id = ?").get(lobbyId);
+  if (!lobby || lobby.status === "finished") return;
 
-  if (queued.length < QUEUE_SIZE) return null;
+  const players = db.prepare("SELECT * FROM lobby_players WHERE lobby_id = ?").all(lobbyId);
+  const teamA = players.filter((p) => p.team === "A");
+  const teamB = players.filter((p) => p.team === "B");
 
-  const meta = db.prepare("SELECT match_code FROM queue_meta WHERE id = 1").get();
-  const matchCode = meta?.match_code ?? null;
-  db.prepare("DELETE FROM queue_meta WHERE id = 1").run();
+  if (players.length < 2 || teamA.length === 0 || teamB.length === 0) return;
+  if (!players.every((p) => p.ready)) return;
 
-  const userIds = queued.map((p) => p.user_id);
-  const removeFromQueue = db.prepare("DELETE FROM queue WHERE user_id = ?");
-  const markInMatch = db.prepare("UPDATE players SET in_queue = 0, in_match = 1 WHERE user_id = ?");
-  for (const id of userIds) {
-    removeFromQueue.run(id);
-    markInMatch.run(id);
-  }
-
-  const { teamA, teamB } = balanceTeams(queued);
+  // Recrear los canales (soporta repetir varias veces con las mismas partidas)
+  await deleteIfExists(guild, lobby.team_a_channel);
+  await deleteIfExists(guild, lobby.team_b_channel);
+  await deleteIfExists(guild, lobby.category_id);
 
   const category = await guild.channels.create({
-    name: `Partida CS2`,
+    name: `🎮 Sala #${lobbyId}`,
     type: ChannelType.GuildCategory
   });
 
@@ -54,61 +48,33 @@ async function tryStartMatch(guild, textChannel) {
     ]
   });
 
-  const matchChannel = await guild.channels.create({
-    name: "📋-partida",
-    type: ChannelType.GuildText,
-    parent: category.id,
-    permissionOverwrites: [
-      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      ...userIds.map((id) => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }))
-    ]
-  });
-
-  const teamAAvg = Math.round(teamA.reduce((s, p) => s + p.elo, 0) / teamA.length);
-  const teamBAvg = Math.round(teamB.reduce((s, p) => s + p.elo, 0) / teamB.length);
-
-  const result = db
-    .prepare(
-      `INSERT INTO matches (guild_id, status, team_a, team_b, team_a_channel, team_b_channel, text_channel, created_at)
-       VALUES (?, 'ongoing', ?, ?, ?, ?, ?, ?)`
-    )
-    .run(guild.id, JSON.stringify(teamA.map((p) => p.user_id)), JSON.stringify(teamB.map((p) => p.user_id)), voiceA.id, voiceB.id, matchChannel.id, Date.now());
-
-  const matchId = result.lastInsertRowid;
-
-  const embed = new EmbedBuilder()
-    .setTitle(`🎮 Partida #${matchId} lista`)
-    .setColor(0x2ecc71)
-    .addFields(
-      { name: `🅰️ Equipo A (ELO prom. ${teamAAvg})`, value: teamA.map((p) => `${p.username} — ${p.elo}`).join("\n"), inline: true },
-      { name: `🅱️ Equipo B (ELO prom. ${teamBAvg})`, value: teamB.map((p) => `${p.username} — ${p.elo}`).join("\n"), inline: true }
-    )
-    .setDescription(`Únanse a sus canales de voz y entren a la partida con el código de abajo. Cuando termine, un admin confirma el resultado.`)
-    .setFooter({ text: "El resultado lo confirma un admin con /resultado" });
-
-  if (matchCode) {
-    embed.addFields({
-      name: "🔑 Código de matchmaking privado",
-      value: `\`\`\`${matchCode}\`\`\`\nEn CS2: Jugar → Matchmaking Privado → Introducir código`
-    });
-  }
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`match_win_a_${matchId}`).setLabel("Ganó Equipo A").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`match_win_b_${matchId}`).setLabel("Ganó Equipo B").setStyle(ButtonStyle.Primary)
+  db.prepare("UPDATE lobbies SET category_id = ?, team_a_channel = ?, team_b_channel = ? WHERE id = ?").run(
+    category.id,
+    voiceA.id,
+    voiceB.id,
+    lobbyId
   );
 
-  await matchChannel.send({
-    content: userIds.map((id) => `<@${id}>`).join(" "),
-    embeds: [embed],
-    components: [row]
-  });
-
-  if (textChannel) {
-    await textChannel.send({ content: `✅ ¡Partida #${matchId} formada! Vayan a ${matchChannel}.` });
+  for (const p of teamA) {
+    const member = await guild.members.fetch(p.user_id).catch(() => null);
+    if (member?.voice?.channelId) await member.voice.setChannel(voiceA.id).catch(() => {});
   }
-
-  return matchId;
+  for (const p of teamB) {
+    const member = await guild.members.fetch(p.user_id).catch(() => null);
+    if (member?.voice?.channelId) await member.voice.setChannel(voiceB.id).catch(() => {});
+  }
 }
 
-module.exports = { tryStartMatch, QUEUE_SIZE };
+async function finalizeLobby(guild, lobbyId) {
+  const lobby = db.prepare("SELECT * FROM lobbies WHERE id = ?").get(lobbyId);
+  if (!lobby) return;
+
+  await deleteIfExists(guild, lobby.team_a_channel);
+  await deleteIfExists(guild, lobby.team_b_channel);
+  await deleteIfExists(guild, lobby.category_id);
+
+  db.prepare("DELETE FROM lobby_players WHERE lobby_id = ?").run(lobbyId);
+  db.prepare("UPDATE lobbies SET status = 'finished' WHERE id = ?").run(lobbyId);
+}
+
+module.exports = { checkAllReadyAndSyncChannels, finalizeLobby };

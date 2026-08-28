@@ -26,10 +26,27 @@ CREATE TABLE IF NOT EXISTS queue (
   FOREIGN KEY (user_id) REFERENCES players(user_id)
 );
 
-CREATE TABLE IF NOT EXISTS queue_meta (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
+CREATE TABLE IF NOT EXISTS lobbies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  message_id TEXT,
+  creator_id TEXT,
   match_code TEXT,
-  created_by TEXT
+  category_id TEXT,
+  team_a_channel TEXT,
+  team_b_channel TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lobby_players (
+  lobby_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
+  team TEXT NOT NULL CHECK (team IN ('A', 'B')),
+  ready INTEGER NOT NULL DEFAULT 0,
+  joined_at INTEGER NOT NULL,
+  PRIMARY KEY (lobby_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS matches (

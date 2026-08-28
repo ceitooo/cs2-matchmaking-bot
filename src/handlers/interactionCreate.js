@@ -1,11 +1,20 @@
 const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
 const { db, getOrCreatePlayer } = require("../db/database");
-const { buildQueuePanel } = require("../utils/panelBuilder");
-const { tryStartMatch } = require("../utils/matchmaking");
+const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
+const { checkAllReadyAndSyncChannels, finalizeLobby } = require("../utils/matchmaking");
 
-function joinQueue(userId) {
-  db.prepare("INSERT INTO queue (user_id, joined_at) VALUES (?, ?)").run(userId, Date.now());
-  db.prepare("UPDATE players SET in_queue = 1 WHERE user_id = ?").run(userId);
+function parseId(customId) {
+  const [action, lobbyId] = customId.split(":");
+  return { action, lobbyId: Number(lobbyId) };
+}
+
+async function refreshPanel(interaction, lobbyId) {
+  const payload = buildLobbyPanel(lobbyId);
+  if (interaction.deferred || interaction.replied) {
+    await interaction.message.edit(payload).catch(() => {});
+  } else {
+    await interaction.update(payload).catch(() => {});
+  }
 }
 
 module.exports = {
@@ -28,58 +37,74 @@ module.exports = {
       return;
     }
 
-    if (interaction.isModalSubmit() && interaction.customId === "queue_code_modal") {
-      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
-
-      const stillEmpty = !db.prepare("SELECT 1 FROM queue LIMIT 1").get();
-      if (!stillEmpty) {
-        return interaction.reply({ content: "Alguien más ya inició la cola mientras escribías el código. Únete normalmente.", flags: 64 });
+    if (interaction.isModalSubmit() && interaction.customId.startsWith("lobby_code_modal:")) {
+      const { lobbyId } = parseId(interaction.customId);
+      const lobby = db.prepare("SELECT * FROM lobbies WHERE id = ?").get(lobbyId);
+      if (!lobby || lobby.status === "finished") {
+        return interaction.reply({ content: "Esta sala ya no existe.", flags: 64 });
       }
-      if (player.in_match) {
-        return interaction.reply({ content: "Ya estás en una partida en curso.", flags: 64 });
+
+      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
+      const alreadyIn = db.prepare("SELECT 1 FROM lobby_players WHERE lobby_id = ? AND user_id = ?").get(lobbyId, interaction.user.id);
+      if (alreadyIn) {
+        return interaction.reply({ content: "Ya estás en esta sala.", flags: 64 });
       }
 
       const code = interaction.fields.getTextInputValue("code").trim();
+      const team = interaction.fields.getTextInputValue("team_hint") || "A";
 
-      db.prepare("INSERT INTO queue_meta (id, match_code, created_by) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET match_code = excluded.match_code, created_by = excluded.created_by")
-        .run(code, interaction.user.id);
+      db.prepare("UPDATE lobbies SET match_code = ?, creator_id = ? WHERE id = ?").run(code, interaction.user.id, lobbyId);
+      db.prepare("INSERT INTO lobby_players (lobby_id, user_id, team, ready, joined_at) VALUES (?, ?, ?, 0, ?)").run(
+        lobbyId,
+        interaction.user.id,
+        team === "B" ? "B" : "A",
+        Date.now()
+      );
 
-      joinQueue(interaction.user.id);
+      await interaction.reply({ content: "✅ Código guardado, te uniste a la sala como creador.", flags: 64 });
 
-      await interaction.reply({ content: "✅ Código guardado y te uniste a la cola.", flags: 64 });
-
-      const channel = await interaction.client.channels.fetch(interaction.channelId).catch(() => null);
-      if (channel) {
-        const messages = await channel.messages.fetch({ limit: 20 }).catch(() => null);
-        const panelMessage = messages?.find((m) => m.author.id === interaction.client.user.id && m.components.length > 0);
-        if (panelMessage) await panelMessage.edit(buildQueuePanel()).catch(() => {});
+      const channel = await interaction.client.channels.fetch(lobby.channel_id).catch(() => null);
+      if (channel && lobby.message_id) {
+        const message = await channel.messages.fetch(lobby.message_id).catch(() => null);
+        if (message) await message.edit(buildLobbyPanel(lobbyId)).catch(() => {});
       }
       return;
     }
 
     if (!interaction.isButton()) return;
 
-    if (interaction.customId === "queue_join") {
+    const { action, lobbyId } = parseId(interaction.customId);
+    if (!action.startsWith("lobby_")) return;
+
+    const lobby = db.prepare("SELECT * FROM lobbies WHERE id = ?").get(lobbyId);
+    if (!lobby || lobby.status === "finished") {
+      return interaction.reply({ content: "Esta sala ya no existe. Usa `/panel` para crear una nueva.", flags: 64 });
+    }
+
+    if (action === "lobby_join_a" || action === "lobby_join_b") {
+      const team = action === "lobby_join_a" ? "A" : "B";
       const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
 
       if (!player.steam_id) {
-        return interaction.reply({ content: "Debes vincular tu cuenta de Steam antes de jugar. Usa `/vincular-steam`.", flags: 64 });
-      }
-      if (player.in_match) {
-        return interaction.reply({ content: "Ya estás en una partida en curso.", flags: 64 });
+        return interaction.reply({ content: "Debes vincular tu cuenta de Steam antes de unirte. Usa `/vincular-steam`.", flags: 64 });
       }
 
-      const already = db.prepare("SELECT 1 FROM queue WHERE user_id = ?").get(interaction.user.id);
+      const already = db.prepare("SELECT 1 FROM lobby_players WHERE lobby_id = ? AND user_id = ?").get(lobbyId, interaction.user.id);
       if (already) {
-        return interaction.reply({ content: "Ya estás en la cola.", flags: 64 });
+        return interaction.reply({ content: "Ya estás en esta sala.", flags: 64 });
       }
 
-      const queueEmpty = !db.prepare("SELECT 1 FROM queue LIMIT 1").get();
+      const teamCount = db.prepare("SELECT COUNT(*) as c FROM lobby_players WHERE lobby_id = ? AND team = ?").get(lobbyId, team).c;
+      if (teamCount >= MAX_PER_TEAM) {
+        return interaction.reply({ content: `El Equipo ${team} ya está lleno (máximo ${MAX_PER_TEAM}).`, flags: 64 });
+      }
 
-      if (queueEmpty) {
-        const modal = new ModalBuilder().setCustomId("queue_code_modal").setTitle("Código de matchmaking privado");
+      const totalPlayers = db.prepare("SELECT COUNT(*) as c FROM lobby_players WHERE lobby_id = ?").get(lobbyId).c;
 
-        const input = new TextInputBuilder()
+      if (totalPlayers === 0) {
+        const modal = new ModalBuilder().setCustomId(`lobby_code_modal:${lobbyId}`).setTitle("Código de matchmaking privado");
+
+        const codeInput = new TextInputBuilder()
           .setCustomId("code")
           .setLabel("Código de CS2 (Jugar → Matchmaking Privado)")
           .setStyle(TextInputStyle.Short)
@@ -87,55 +112,66 @@ module.exports = {
           .setRequired(true)
           .setMaxLength(40);
 
-        modal.addComponents(new ActionRowBuilder().addComponents(input));
+        const teamInput = new TextInputBuilder()
+          .setCustomId("team_hint")
+          .setLabel(`Tu equipo (A o B) — elegiste: ${team}`)
+          .setStyle(TextInputStyle.Short)
+          .setValue(team)
+          .setRequired(true)
+          .setMaxLength(1);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(codeInput),
+          new ActionRowBuilder().addComponents(teamInput)
+        );
         return interaction.showModal(modal);
       }
 
-      joinQueue(interaction.user.id);
+      db.prepare("INSERT INTO lobby_players (lobby_id, user_id, team, ready, joined_at) VALUES (?, ?, ?, 0, ?)").run(
+        lobbyId,
+        interaction.user.id,
+        team,
+        Date.now()
+      );
 
-      await interaction.update(buildQueuePanel());
-
-      const matchId = await tryStartMatch(interaction.guild, interaction.channel);
-      if (matchId) {
-        await interaction.message.edit(buildQueuePanel()).catch(() => {});
-      }
+      await refreshPanel(interaction, lobbyId);
       return;
     }
 
-    if (interaction.customId === "queue_leave") {
-      const removed = db.prepare("DELETE FROM queue WHERE user_id = ?").run(interaction.user.id);
-      db.prepare("UPDATE players SET in_queue = 0 WHERE user_id = ?").run(interaction.user.id);
-
+    if (action === "lobby_leave") {
+      const removed = db.prepare("DELETE FROM lobby_players WHERE lobby_id = ? AND user_id = ?").run(lobbyId, interaction.user.id);
       if (removed.changes === 0) {
-        return interaction.reply({ content: "No estabas en la cola.", flags: 64 });
+        return interaction.reply({ content: "No estabas en esta sala.", flags: 64 });
       }
-
-      const queueNowEmpty = !db.prepare("SELECT 1 FROM queue LIMIT 1").get();
-      if (queueNowEmpty) {
-        db.prepare("DELETE FROM queue_meta WHERE id = 1").run();
-      }
-
-      await interaction.update(buildQueuePanel());
+      await refreshPanel(interaction, lobbyId);
       return;
     }
 
-    if (interaction.customId === "queue_stats") {
-      const player = getOrCreatePlayer(interaction.user.id, interaction.user.username);
-      const total = player.wins + player.losses;
-      const winrate = total > 0 ? ((player.wins / total) * 100).toFixed(1) : "0.0";
+    if (action === "lobby_ready") {
+      const entry = db.prepare("SELECT * FROM lobby_players WHERE lobby_id = ? AND user_id = ?").get(lobbyId, interaction.user.id);
+      if (!entry) {
+        return interaction.reply({ content: "Primero únete a un equipo.", flags: 64 });
+      }
 
-      const embed = new EmbedBuilder()
-        .setTitle(`📊 Tus stats`)
-        .setColor(0x3498db)
-        .addFields(
-          { name: "ELO", value: `${player.elo}`, inline: true },
-          { name: "Victorias", value: `${player.wins}`, inline: true },
-          { name: "Derrotas", value: `${player.losses}`, inline: true },
-          { name: "Winrate", value: `${winrate}%`, inline: true },
-          { name: "Steam vinculado", value: player.steam_id ? "Sí ✅" : "No — usa /vincular-steam", inline: true }
-        );
+      db.prepare("UPDATE lobby_players SET ready = ? WHERE lobby_id = ? AND user_id = ?").run(entry.ready ? 0 : 1, lobbyId, interaction.user.id);
 
-      return interaction.reply({ embeds: [embed], flags: 64 });
+      await interaction.update(buildLobbyPanel(lobbyId));
+
+      const guild = interaction.guild;
+      await checkAllReadyAndSyncChannels(guild, lobbyId);
+      await interaction.message.edit(buildLobbyPanel(lobbyId)).catch(() => {});
+      return;
+    }
+
+    if (action === "lobby_finalize") {
+      if (interaction.user.id !== lobby.creator_id && !interaction.memberPermissions?.has("ManageGuild")) {
+        return interaction.reply({ content: "Solo quien creó la sala (o un admin) puede finalizarla.", flags: 64 });
+      }
+
+      await interaction.deferUpdate().catch(() => {});
+      await finalizeLobby(interaction.guild, lobbyId);
+      await interaction.message.edit(buildLobbyPanel(lobbyId)).catch(() => {});
+      return;
     }
   }
 };
