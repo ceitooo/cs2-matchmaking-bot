@@ -33,7 +33,6 @@ function scheduleExpire(client, queueId) {
     if (channel && queue.message_id) {
       const message = await channel.messages.fetch(queue.message_id).catch(() => null);
       if (message) await message.edit(buildQuickQueuePanel(queueId)).catch(() => {});
-      await channel.send(`🕒 La cola de **${MODES[queue.mode].label}** se vació por pasar 2 horas sin completarse.`).catch(() => {});
     }
   }, EXPIRE_AFTER_MS);
   expireTimers.set(queueId, timer);
