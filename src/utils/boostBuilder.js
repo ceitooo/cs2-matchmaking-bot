@@ -7,7 +7,7 @@ function buildBoostMessage(member, guild, settings) {
     .setDescription(
       `${member} acaba de mejorar el servidor!${guild.premiumSubscriptionCount ? ` ¡Ceitus llegó a **Nivel ${guild.premiumTier}**!` : ""}\nBoosts totales: **${guild.premiumSubscriptionCount ?? 0}**`
     )
-    .setThumbnail(guild.iconURL({ size: 256 }) ?? member.displayAvatarURL());
+    .setThumbnail(member.displayAvatarURL({ size: 256 }));
 
   if (settings.boost_image_url) {
     embed.setImage(settings.boost_image_url);
