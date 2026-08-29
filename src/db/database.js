@@ -122,7 +122,11 @@ for (const migration of [
   "ALTER TABLE lobbies ADD COLUMN team_b_name TEXT NOT NULL DEFAULT 'Equipo B'",
   "ALTER TABLE lobbies ADD COLUMN opened_by TEXT",
   "ALTER TABLE players ADD COLUMN lobbies_played INTEGER NOT NULL DEFAULT 0",
-  "ALTER TABLE players ADD COLUMN lobbies_created INTEGER NOT NULL DEFAULT 0"
+  "ALTER TABLE players ADD COLUMN lobbies_created INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE guild_settings ADD COLUMN shop_ticket_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN shop_staff_role_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN shop_panel_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN shop_panel_message_id TEXT"
 ]) {
   try {
     database.exec(migration);

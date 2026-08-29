@@ -23,6 +23,13 @@ async function getOrCreateTicketsCategory(guild) {
     if (existing) return existing;
   }
 
+  await guild.channels.fetch().catch(() => {});
+  const byName = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === TICKETS_CATEGORY_NAME);
+  if (byName) {
+    updateGuildSettings(guild.id, { shop_ticket_category_id: byName.id });
+    return byName;
+  }
+
   const overwrites = [
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
     ...staffRoleIds(guild).map((id) => ({
