@@ -10,23 +10,12 @@ function buildShopPanel(guildId) {
 
   if (products.length === 0) {
     return {
-      embeds: [new EmbedBuilder().setColor(0xe91e8c).setTitle("🛒 Tienda").setDescription("Todavía no hay productos a la venta.")],
+      embeds: [new EmbedBuilder().setColor(0xe91e8c).setTitle("🛒 Panel de Compras").setDescription("Todavía no hay productos a la venta.")],
       components: []
     };
   }
 
-  const categories = [...new Set(products.map((p) => p.category))];
-
-  const embed = new EmbedBuilder().setColor(0xe91e8c).setTitle("🛒 Tienda").setDescription("Elegí un producto del menú de abajo para comprarlo.");
-
-  for (const category of categories) {
-    const items = products.filter((p) => p.category === category);
-    const value = items.map((p) => `**${p.name}** — ${p.price}${p.description ? `\n${p.description}` : ""}`).join("\n\n");
-    embed.addFields({ name: `📦 ${category}`, value: value.slice(0, 1024) });
-  }
-
-  const firstImage = products.find((p) => p.image_url)?.image_url;
-  if (firstImage) embed.setThumbnail(firstImage);
+  const embed = new EmbedBuilder().setColor(0xe91e8c).setTitle("🛒 Panel de Compras");
 
   const options = products.slice(0, 25).map((p) => ({
     label: p.name.slice(0, 100),
