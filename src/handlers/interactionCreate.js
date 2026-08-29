@@ -4,7 +4,7 @@ const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 const { getProducts } = require("../utils/shopBuilder");
-const { createProductTicket, closeTicket } = require("../utils/tickets");
+const { createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
 const { isStaffOrCeito } = require("../utils/permissions");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
@@ -145,6 +145,17 @@ module.exports = {
         return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       }
       return interaction.editReply({ content: `✅ Ticket creado: ${channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("ticket_ping:")) {
+      const status = canPing(interaction.channelId);
+      if (!status.ok) {
+        return interaction.reply({ content: `⏳ Esperá ${status.remainingSeconds}s antes de volver a avisar al staff.`, flags: 64 });
+      }
+
+      registerPing(interaction.channelId);
+      const mentions = pingRoleIds(interaction.guild).map((id) => `<@&${id}>`).join(" ");
+      return interaction.reply({ content: `🔔 ${mentions} — ${interaction.user} necesita atención en este ticket.` });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("ticket_close:")) {

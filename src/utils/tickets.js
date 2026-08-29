@@ -15,6 +15,29 @@ function staffRoleIds(guild) {
   return [...ids].filter((id) => guild.roles.cache.has(id));
 }
 
+// Solo el rol "Staff" y el rol "ceito" — a diferencia de staffRoleIds() (usado para permisos
+// de canal), esto es lo que se menciona en los pings para no molestar a otros roles con
+// permisos de administrador (ej: bots como carl-bot o Sapphire).
+function pingRoleIds(guild) {
+  const ids = new Set([CEITO_ROLE_ID]);
+  const staffRole = guild.roles.cache.find((r) => r.name.toLowerCase() === "staff");
+  if (staffRole) ids.add(staffRole.id);
+  return [...ids].filter((id) => guild.roles.cache.has(id));
+}
+
+const PING_COOLDOWN_MS = 25_000;
+const lastPingByChannel = new Map();
+
+function canPing(channelId) {
+  const last = lastPingByChannel.get(channelId) ?? 0;
+  const remaining = PING_COOLDOWN_MS - (Date.now() - last);
+  return remaining <= 0 ? { ok: true } : { ok: false, remainingSeconds: Math.ceil(remaining / 1000) };
+}
+
+function registerPing(channelId) {
+  lastPingByChannel.set(channelId, Date.now());
+}
+
 async function getOrCreateTicketsCategory(guild) {
   const settings = getGuildSettings(guild.id);
 
@@ -98,11 +121,17 @@ async function createProductTicket(guild, member, product) {
     .setTitle("🎫 Ticket de compra")
     .setDescription(`Producto: **${product.name}**\nPrecio: **${product.price}**\n\nEl staff te va a atender por acá. Cuando termine la venta, un staff puede cerrar el ticket.`);
 
-  const closeRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`ticket_close:${channel.id}`).setLabel("Cerrar ticket").setStyle(ButtonStyle.Danger).setEmoji("🔒")
+  const buttonsRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`ticket_close:${channel.id}`).setLabel("Cerrar ticket").setStyle(ButtonStyle.Danger).setEmoji("🔒"),
+    new ButtonBuilder().setCustomId(`ticket_ping:${channel.id}`).setLabel("Avisar al staff").setStyle(ButtonStyle.Secondary).setEmoji("🔔")
   );
 
-  await channel.send({ content: `${member} · ${staffRoleIds(guild).map((id) => `<@&${id}>`).join(" ")}`, embeds: [embed], components: [closeRow] });
+  await channel.send({
+    content: `${member} · ${pingRoleIds(guild).map((id) => `<@&${id}>`).join(" ")}`,
+    embeds: [embed],
+    components: [buttonsRow]
+  });
+  registerPing(channel.id);
 
   return channel;
 }
@@ -141,4 +170,13 @@ async function closeTicket(channel, closedBy) {
   }
 }
 
-module.exports = { getOrCreateTicketsCategory, getOrCreateLogsChannel, createProductTicket, closeTicket, staffRoleIds };
+module.exports = {
+  getOrCreateTicketsCategory,
+  getOrCreateLogsChannel,
+  createProductTicket,
+  closeTicket,
+  staffRoleIds,
+  pingRoleIds,
+  canPing,
+  registerPing
+};
