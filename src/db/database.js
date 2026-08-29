@@ -88,6 +88,14 @@ CREATE TABLE IF NOT EXISTS matches (
   created_at INTEGER NOT NULL,
   winner TEXT
 );
+
+CREATE TABLE IF NOT EXISTS guild_settings (
+  guild_id TEXT PRIMARY KEY,
+  welcome_channel_id TEXT,
+  welcome_image_url TEXT,
+  boost_channel_id TEXT,
+  boost_image_url TEXT
+);
 `);
 
 for (const migration of [
@@ -134,4 +142,20 @@ function getOrCreatePlayer(userId, username, avatarUrl) {
   return db.prepare("SELECT * FROM players WHERE user_id = ?").get(userId);
 }
 
-module.exports = { db, getOrCreatePlayer };
+function getGuildSettings(guildId) {
+  const existing = db.prepare("SELECT * FROM guild_settings WHERE guild_id = ?").get(guildId);
+  if (existing) return existing;
+  db.prepare("INSERT INTO guild_settings (guild_id) VALUES (?)").run(guildId);
+  return db.prepare("SELECT * FROM guild_settings WHERE guild_id = ?").get(guildId);
+}
+
+function updateGuildSettings(guildId, fields) {
+  getGuildSettings(guildId);
+  const columns = Object.keys(fields);
+  if (columns.length === 0) return getGuildSettings(guildId);
+  const setClause = columns.map((c) => `${c} = ?`).join(", ");
+  db.prepare(`UPDATE guild_settings SET ${setClause} WHERE guild_id = ?`).run(...columns.map((c) => fields[c]), guildId);
+  return getGuildSettings(guildId);
+}
+
+module.exports = { db, getOrCreatePlayer, getGuildSettings, updateGuildSettings };
