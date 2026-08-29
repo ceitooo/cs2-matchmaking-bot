@@ -18,6 +18,12 @@ module.exports = {
         .addStringOption((opt) => opt.setName("url").setDescription("URL de una imagen o gif (alternativa al archivo)").setRequired(false))
     )
     .addSubcommand((sub) => sub.setName("quitar-imagen").setDescription("Elimina la imagen/gif de bienvenida configurada"))
+    .addSubcommand((sub) =>
+      sub
+        .setName("color")
+        .setDescription("Define el color del panel de bienvenida")
+        .addStringOption((opt) => opt.setName("hex").setDescription("Color en hexadecimal (ej: #e91e8c)").setRequired(true))
+    )
     .addSubcommand((sub) => sub.setName("ver").setDescription("Muestra la configuración actual de bienvenida")),
 
   async execute(interaction) {
@@ -52,14 +58,25 @@ module.exports = {
       return interaction.reply({ content: "✅ Imagen/gif de bienvenida eliminada.", flags: 64 });
     }
 
+    if (sub === "color") {
+      const hex = interaction.options.getString("hex", true).trim();
+      if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) {
+        return interaction.reply({ content: "Ese no es un color hexadecimal válido. Ejemplo: `#e91e8c`.", flags: 64 });
+      }
+      const normalized = hex.startsWith("#") ? hex : `#${hex}`;
+      updateGuildSettings(guildId, { welcome_color: normalized });
+      return interaction.reply({ content: `✅ Color de bienvenida actualizado a \`${normalized}\`.`, flags: 64 });
+    }
+
     if (sub === "ver") {
       const settings = getGuildSettings(guildId);
       const embed = new EmbedBuilder()
         .setTitle("Configuración de bienvenida")
-        .setColor(0xe91e8c)
+        .setColor(settings.welcome_color ?? 0xe91e8c)
         .addFields(
           { name: "Canal", value: settings.welcome_channel_id ? `<#${settings.welcome_channel_id}>` : "No configurado" },
-          { name: "Imagen/gif", value: settings.welcome_image_url ? "Configurada (vista previa abajo)" : "No configurada" }
+          { name: "Imagen/gif", value: settings.welcome_image_url ? "Configurada (vista previa abajo)" : "No configurada" },
+          { name: "Color", value: settings.welcome_color ?? "Por defecto (`#e91e8c`)" }
         );
       if (settings.welcome_image_url) embed.setImage(settings.welcome_image_url);
 

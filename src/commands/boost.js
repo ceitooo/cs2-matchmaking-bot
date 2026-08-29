@@ -17,6 +17,12 @@ module.exports = {
         .addStringOption((opt) => opt.setName("url").setDescription("URL de una imagen o gif (alternativa al archivo)").setRequired(false))
     )
     .addSubcommand((sub) => sub.setName("quitar-imagen").setDescription("Elimina la imagen/gif de boost configurada"))
+    .addSubcommand((sub) =>
+      sub
+        .setName("color")
+        .setDescription("Define el color del panel de boost")
+        .addStringOption((opt) => opt.setName("hex").setDescription("Color en hexadecimal (ej: #f47fff)").setRequired(true))
+    )
     .addSubcommand((sub) => sub.setName("ver").setDescription("Muestra la configuración actual de boost")),
 
   async execute(interaction) {
@@ -51,14 +57,25 @@ module.exports = {
       return interaction.reply({ content: "✅ Imagen/gif de boost eliminada.", flags: 64 });
     }
 
+    if (sub === "color") {
+      const hex = interaction.options.getString("hex", true).trim();
+      if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) {
+        return interaction.reply({ content: "Ese no es un color hexadecimal válido. Ejemplo: `#f47fff`.", flags: 64 });
+      }
+      const normalized = hex.startsWith("#") ? hex : `#${hex}`;
+      updateGuildSettings(guildId, { boost_color: normalized });
+      return interaction.reply({ content: `✅ Color de boost actualizado a \`${normalized}\`.`, flags: 64 });
+    }
+
     if (sub === "ver") {
       const settings = getGuildSettings(guildId);
       const embed = new EmbedBuilder()
         .setTitle("Configuración de anuncio de boost")
-        .setColor(0xf47fff)
+        .setColor(settings.boost_color ?? 0xf47fff)
         .addFields(
           { name: "Canal", value: settings.boost_channel_id ? `<#${settings.boost_channel_id}>` : "No configurado" },
-          { name: "Imagen/gif", value: settings.boost_image_url ? "Configurada (vista previa abajo)" : "No configurada" }
+          { name: "Imagen/gif", value: settings.boost_image_url ? "Configurada (vista previa abajo)" : "No configurada" },
+          { name: "Color", value: settings.boost_color ?? "Por defecto (`#f47fff`)" }
         );
       if (settings.boost_image_url) embed.setImage(settings.boost_image_url);
       return interaction.reply({ embeds: [embed], flags: 64 });

@@ -126,7 +126,9 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN shop_ticket_category_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN shop_staff_role_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN shop_panel_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN shop_panel_message_id TEXT"
+  "ALTER TABLE guild_settings ADD COLUMN shop_panel_message_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN welcome_color TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN boost_color TEXT"
 ]) {
   try {
     database.exec(migration);

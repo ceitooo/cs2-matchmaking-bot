@@ -2,7 +2,7 @@ const { EmbedBuilder } = require("discord.js");
 
 function buildBoostMessage(member, guild, settings) {
   const embed = new EmbedBuilder()
-    .setColor(0xf47fff)
+    .setColor(settings.boost_color ?? 0xf47fff)
     .setTitle("💖 ¡Nuevo boost!")
     .setDescription(
       `${member} acaba de mejorar el servidor!${guild.premiumSubscriptionCount ? ` ¡Ceitus llegó a **Nivel ${guild.premiumTier}**!` : ""}\nBoosts totales: **${guild.premiumSubscriptionCount ?? 0}**`
