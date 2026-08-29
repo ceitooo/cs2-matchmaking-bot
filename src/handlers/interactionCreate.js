@@ -3,6 +3,9 @@ const { db, getOrCreatePlayer } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
+const { getProducts } = require("../utils/shopBuilder");
+const { createProductTicket, closeTicket } = require("../utils/tickets");
+const { isStaffOrCeito } = require("../utils/permissions");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
 
@@ -30,6 +33,17 @@ async function dmMatchCode(interaction, lobby) {
 module.exports = {
   name: "interactionCreate",
   async execute(interaction) {
+    if (interaction.isAutocomplete()) {
+      const command = interaction.client.commands.get(interaction.commandName);
+      if (!command?.autocomplete) return;
+      try {
+        await command.autocomplete(interaction);
+      } catch (error) {
+        console.error(error);
+      }
+      return;
+    }
+
     if (interaction.isChatInputCommand()) {
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command) return;
@@ -115,6 +129,32 @@ module.exports = {
       await interaction.client.users.send(targetId, `Fuiste expulsado de la sala #${lobbyId}.`).catch(() => {});
 
       await refreshPanel(interaction, lobbyId);
+      return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === "shop_buy_select") {
+      const productId = Number(interaction.values[0]);
+      const product = db.prepare("SELECT * FROM shop_products WHERE id = ? AND guild_id = ?").get(productId, interaction.guildId);
+      if (!product) {
+        return interaction.reply({ content: "Ese producto ya no está disponible.", flags: 64 });
+      }
+
+      await interaction.deferReply({ flags: 64 });
+      const channel = await createProductTicket(interaction.guild, interaction.member, product).catch(() => null);
+      if (!channel) {
+        return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
+      }
+      return interaction.editReply({ content: `✅ Ticket creado: ${channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("ticket_close:")) {
+      if (!isStaffOrCeito(interaction)) {
+        return interaction.reply({ content: "Solo el staff o ceito pueden cerrar tickets.", flags: 64 });
+      }
+
+      await interaction.reply({ content: "🔒 Cerrando ticket y guardando el registro..." });
+      await closeTicket(interaction.channel, interaction.user);
+      await interaction.channel.delete().catch(() => {});
       return;
     }
 
