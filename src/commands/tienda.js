@@ -93,12 +93,15 @@ module.exports = {
       const settings = getGuildSettings(guildId);
       let message = null;
       if (settings.shop_panel_channel_id === channel.id && settings.shop_panel_message_id) {
-        message = await channel.messages.fetch(settings.shop_panel_message_id).catch(() => null);
+        message = await channel.messages.fetch({ message: settings.shop_panel_message_id, force: true }).catch(() => null);
       }
 
       if (message) {
-        await message.edit(payload);
-      } else {
+        const edited = await message.edit(payload).catch(() => null);
+        if (!edited) message = null;
+      }
+
+      if (!message) {
         message = await channel.send(payload);
         updateGuildSettings(guildId, { shop_panel_channel_id: channel.id, shop_panel_message_id: message.id });
       }
