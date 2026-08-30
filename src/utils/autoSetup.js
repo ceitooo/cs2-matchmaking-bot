@@ -1,5 +1,5 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
-const { getGuildSettings, updateGuildSettings } = require("./database");
+const { getGuildSettings, updateGuildSettings } = require("../db/database");
 
 const LOG_CHANNELS = [
   { key: "log_server_channel_id", name: "📜┃server-logs" },
