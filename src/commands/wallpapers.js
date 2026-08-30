@@ -31,18 +31,6 @@ module.exports = {
         .setDescription("Canal para iconos anime (1:1)")
         .addChannelOption((o) => o.setName("canal").setDescription("Canal").addChannelTypes(ChannelType.GuildText).setRequired(true))
     )
-    .addSubcommand((sub) =>
-      sub
-        .setName("categoria-wallpaper")
-        .setDescription("Categoría para los wallpapers de PC/Móvil")
-        .addStringOption((o) =>
-          o
-            .setName("categoria")
-            .setDescription("Estilo de wallpaper")
-            .setRequired(true)
-            .addChoices({ name: "Mixto", value: "mixed" }, { name: "Anime", value: "anime" }, { name: "General", value: "general" })
-        )
-    )
     .addSubcommand((sub) => sub.setName("ahora").setDescription("Postea ahora mismo en todos los canales configurados"))
     .addSubcommand((sub) => sub.setName("estado").setDescription("Muestra la configuración actual")),
 
@@ -78,12 +66,6 @@ module.exports = {
       return interaction.reply({ content: `🎌 Canal de iconos establecido en ${canal}.`, flags: 64 });
     }
 
-    if (sub === "categoria-wallpaper") {
-      const categoria = interaction.options.getString("categoria");
-      updateGuildSettings(interaction.guild.id, { wallpaper_category: categoria });
-      return interaction.reply({ content: `✅ Categoría de wallpapers establecida en **${categoria}**.`, flags: 64 });
-    }
-
     if (sub === "estado") {
       const c = (id) => (id ? `<#${id}>` : "No configurado");
       return interaction.reply({
@@ -92,8 +74,7 @@ module.exports = {
           `🖥️ PC: ${c(settings.wallpaper_pc_channel_id)}\n` +
           `📱 Móvil: ${c(settings.wallpaper_mobile_channel_id)}\n` +
           `🎌 Banner: ${c(settings.banner_channel_id)}\n` +
-          `🎌 Icono: ${c(settings.icon_channel_id)}\n` +
-          `📂 Categoría wallpapers: **${settings.wallpaper_category}**`,
+          `🎌 Icono: ${c(settings.icon_channel_id)}`,
         flags: 64
       });
     }

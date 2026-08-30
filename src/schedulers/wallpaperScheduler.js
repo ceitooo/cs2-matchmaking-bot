@@ -1,15 +1,16 @@
 const { EmbedBuilder } = require("discord.js");
 const { db } = require("../db/database");
-const { fetchWallpaper } = require("../utils/wallhaven");
+const { fetchDanbooruImage } = require("../utils/danbooru");
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // revisa cada 30 min si ya toca postear
 
+// Danbooru limita búsquedas anónimas a 2 tags, uno ya es "rating:general" — queda 1 libre por objetivo
 const TARGETS = [
-  { channelField: "wallpaper_pc_channel_id", ratio: "16x9", categoryField: "wallpaper_category", minRes: "1920x1080", title: "🖥️ Wallpaper PC" },
-  { channelField: "wallpaper_mobile_channel_id", ratio: "9x16", categoryField: "wallpaper_category", minRes: "1080x1920", title: "📱 Wallpaper Móvil" },
-  { channelField: "banner_channel_id", ratio: "16x9", category: "anime", minRes: "1920x1080", title: "🎌 Banner Anime" },
-  { channelField: "icon_channel_id", ratio: "1x1", category: "anime", title: "🎌 Icono Anime" }
+  { channelField: "wallpaper_pc_channel_id", tag: "scenery", orientation: "landscape", title: "🖥️ Wallpaper PC" },
+  { channelField: "wallpaper_mobile_channel_id", tag: "scenery", orientation: "portrait", title: "📱 Wallpaper Móvil" },
+  { channelField: "banner_channel_id", tag: "scenery", orientation: "landscape", title: "🎌 Banner Anime" },
+  { channelField: "icon_channel_id", tag: "solo", orientation: "square", title: "🎌 Icono Anime" }
 ];
 
 async function postForGuild(client, settings) {
@@ -17,10 +18,8 @@ async function postForGuild(client, settings) {
     const channelId = settings[target.channelField];
     if (!channelId) continue;
 
-    const category = target.category ?? settings[target.categoryField];
-
     try {
-      const result = await fetchWallpaper({ ratio: target.ratio, category, minRes: target.minRes });
+      const result = await fetchDanbooruImage(target.tag, target.orientation);
       if (!result) continue;
 
       const channel = await client.channels.fetch(channelId).catch(() => null);
@@ -30,7 +29,7 @@ async function postForGuild(client, settings) {
         .setTitle(target.title)
         .setImage(result.imageUrl)
         .setURL(result.pageUrl)
-        .setFooter({ text: result.resolution ? `Resolución: ${result.resolution} • Wallhaven` : "Wallhaven" })
+        .setFooter({ text: result.resolution ? `Resolución: ${result.resolution} • Danbooru` : "Danbooru" })
         .setColor(0x9b59b6);
 
       await channel.send({ embeds: [embed] }).catch(() => {});
