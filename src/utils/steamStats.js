@@ -23,6 +23,18 @@ async function fetchCs2Stats(steamId) {
   };
 }
 
+async function fetchSteamProfiles(steamIds) {
+  const apiKey = process.env.STEAM_API_KEY;
+  if (!apiKey || steamIds.length === 0) return [];
+
+  const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${apiKey}&steamids=${steamIds.join(",")}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return data?.response?.players ?? [];
+}
+
 async function fetchSteamProfile(steamId) {
   const apiKey = process.env.STEAM_API_KEY;
   if (!apiKey) return null;
@@ -67,4 +79,4 @@ function evaluateSmurfRisk(profile, playtimeMinutes) {
   return flags;
 }
 
-module.exports = { fetchCs2Stats, fetchSteamProfile, fetchCs2PlaytimeMinutes, evaluateSmurfRisk };
+module.exports = { fetchCs2Stats, fetchSteamProfile, fetchSteamProfiles, fetchCs2PlaytimeMinutes, evaluateSmurfRisk };

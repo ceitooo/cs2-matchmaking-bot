@@ -1,5 +1,6 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 const { db } = require("../db/database");
+const { startMatchWatch } = require("./matchDetector");
 
 const REMINDER_AFTER_MS = 15 * 60 * 1000; // 15 min sin que todos estén listos
 const AUTO_FINALIZE_AFTER_MS = 30 * 60 * 1000; // 30 min sin que todos estén listos
@@ -117,6 +118,8 @@ async function checkAllReadyAndSyncChannels(guild, lobbyId) {
     const member = await guild.members.fetch(p.user_id).catch(() => null);
     if (member?.voice?.channelId) await member.voice.setChannel(voiceB.id).catch(() => {});
   }
+
+  startMatchWatch(guild, lobbyId);
 }
 
 async function finalizeLobby(guild, lobbyId) {

@@ -100,7 +100,18 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   shop_panel_channel_id TEXT,
   shop_panel_message_id TEXT,
   antiraid_enabled INTEGER NOT NULL DEFAULT 1,
-  antiraid_log_channel_id TEXT
+  antiraid_log_channel_id TEXT,
+  logs_category_id TEXT,
+  log_bans_channel_id TEXT,
+  log_nicknames_channel_id TEXT,
+  log_messages_channel_id TEXT,
+  log_server_channel_id TEXT,
+  log_verifications_channel_id TEXT,
+  log_warns_channel_id TEXT,
+  invites_category_id TEXT,
+  invites_channel_id TEXT,
+  match_alerts_channel_id TEXT,
+  automod_enabled INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS shop_products (
@@ -113,6 +124,22 @@ CREATE TABLE IF NOT EXISTS shop_products (
   image_url TEXT,
   position INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS warns (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  moderator_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS invites (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  uses INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (guild_id, user_id)
 );
 `);
 
@@ -138,7 +165,19 @@ for (const migration of [
   "ALTER TABLE guild_settings DROP COLUMN wallpaper_category",
   "ALTER TABLE guild_settings DROP COLUMN wallpaper_last_posted_at",
   "ALTER TABLE guild_settings DROP COLUMN banner_channel_id",
-  "ALTER TABLE guild_settings DROP COLUMN icon_channel_id"
+  "ALTER TABLE guild_settings DROP COLUMN icon_channel_id",
+  "ALTER TABLE guild_settings ADD COLUMN logs_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN log_bans_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN log_nicknames_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN log_messages_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN log_server_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN log_verifications_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN log_warns_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN invites_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN invites_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN match_alerts_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN automod_enabled INTEGER NOT NULL DEFAULT 1",
+  "ALTER TABLE lobbies ADD COLUMN match_started_notified INTEGER NOT NULL DEFAULT 0"
 ]) {
   try {
     database.exec(migration);
@@ -190,4 +229,48 @@ function updateGuildSettings(guildId, fields) {
   return getGuildSettings(guildId);
 }
 
-module.exports = { db, getOrCreatePlayer, getGuildSettings, updateGuildSettings };
+function addWarn(guildId, userId, moderatorId, reason) {
+  db.prepare("INSERT INTO warns (guild_id, user_id, moderator_id, reason, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    guildId,
+    userId,
+    moderatorId,
+    reason,
+    Date.now()
+  );
+  return db.prepare("SELECT * FROM warns WHERE guild_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1").get(guildId, userId);
+}
+
+function getWarns(guildId, userId) {
+  return db.prepare("SELECT * FROM warns WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC").all(guildId, userId);
+}
+
+function removeWarn(guildId, warnId) {
+  return db.prepare("DELETE FROM warns WHERE guild_id = ? AND id = ?").run(guildId, warnId);
+}
+
+function addInviteUse(guildId, userId, amount = 1) {
+  db.prepare("INSERT INTO invites (guild_id, user_id, uses) VALUES (?, ?, ?) ON CONFLICT(guild_id, user_id) DO UPDATE SET uses = uses + ?").run(
+    guildId,
+    userId,
+    amount,
+    amount
+  );
+  return db.prepare("SELECT * FROM invites WHERE guild_id = ? AND user_id = ?").get(guildId, userId);
+}
+
+function getInviteCount(guildId, userId) {
+  const row = db.prepare("SELECT * FROM invites WHERE guild_id = ? AND user_id = ?").get(guildId, userId);
+  return row?.uses ?? 0;
+}
+
+module.exports = {
+  db,
+  getOrCreatePlayer,
+  getGuildSettings,
+  updateGuildSettings,
+  addWarn,
+  getWarns,
+  removeWarn,
+  addInviteUse,
+  getInviteCount
+};

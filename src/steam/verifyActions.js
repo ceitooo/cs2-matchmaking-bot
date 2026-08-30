@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-const { db } = require("../db/database");
+const { db, getGuildSettings } = require("../db/database");
 const { fetchSteamProfile, fetchCs2PlaytimeMinutes, evaluateSmurfRisk } = require("../utils/steamStats");
 
 const VERIFIED_ROLE_NAME = "✅ Steam Verificado";
@@ -69,6 +69,18 @@ async function completeVerification(client, discordUserId, steamId) {
   }
 
   await member.send({ embeds: [embed] }).catch(() => {});
+
+  const settings = getGuildSettings(guild.id);
+  if (settings.log_verifications_channel_id) {
+    const logChannel = await guild.channels.fetch(settings.log_verifications_channel_id).catch(() => null);
+    if (logChannel?.isTextBased()) {
+      await logChannel
+        .send(
+          `✅ **Cuenta de Steam vinculada**\nDiscord: ${member.user.tag} (${member.id})\nSteam: ${steamName ?? "Sin nombre"} (${steamId})${smurfFlags.length ? `\n⚠️ Señales: ${smurfFlags.join(", ")}` : ""}`
+        )
+        .catch(() => {});
+    }
+  }
 }
 
 module.exports = { completeVerification, VERIFIED_ROLE_NAME };
