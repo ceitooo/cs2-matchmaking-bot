@@ -16,22 +16,35 @@ async function channelStillExists(guild, channelId) {
   return Boolean(channel);
 }
 
+// Busca por nombre dentro del server (por si ya fueron creados a mano o vía script,
+// sin pasar por la base de datos del bot) antes de crear uno nuevo.
+function findByName(guild, name, type) {
+  return guild.channels.cache.find((c) => c.name === name && c.type === type) ?? null;
+}
+
 async function ensureLogsSetup(guild, settings) {
   const me = guild.members.me;
-  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) return;
 
   let categoryId = settings.logs_category_id;
   if (!(await channelStillExists(guild, categoryId))) {
-    const category = await guild.channels
-      .create({
-        name: "📋┃Logs",
-        type: ChannelType.GuildCategory,
-        permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }]
-      })
-      .catch(() => null);
-    if (!category) return;
-    categoryId = category.id;
-    updateGuildSettings(guild.id, { logs_category_id: categoryId });
+    const existing = findByName(guild, "📋┃Logs", ChannelType.GuildCategory);
+    if (existing) {
+      categoryId = existing.id;
+      updateGuildSettings(guild.id, { logs_category_id: categoryId });
+    } else if (me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      const category = await guild.channels
+        .create({
+          name: "📋┃Logs",
+          type: ChannelType.GuildCategory,
+          permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }]
+        })
+        .catch(() => null);
+      if (!category) return;
+      categoryId = category.id;
+      updateGuildSettings(guild.id, { logs_category_id: categoryId });
+    } else {
+      return;
+    }
   }
 
   const fields = {};
@@ -39,6 +52,13 @@ async function ensureLogsSetup(guild, settings) {
     const currentId = settings[logChannel.key];
     if (await channelStillExists(guild, currentId)) continue;
 
+    const existing = findByName(guild, logChannel.name, ChannelType.GuildText);
+    if (existing) {
+      fields[logChannel.key] = existing.id;
+      continue;
+    }
+
+    if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) continue;
     const channel = await guild.channels
       .create({ name: logChannel.name, type: ChannelType.GuildText, parent: categoryId })
       .catch(() => null);
@@ -50,21 +70,33 @@ async function ensureLogsSetup(guild, settings) {
 
 async function ensureInvitesSetup(guild, settings) {
   const me = guild.members.me;
-  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels) || !me?.permissions.has(PermissionFlagsBits.ManageGuild)) return;
 
   let categoryId = settings.invites_category_id;
   if (!(await channelStillExists(guild, categoryId))) {
-    const category = await guild.channels.create({ name: "📨┃Invitaciones", type: ChannelType.GuildCategory }).catch(() => null);
-    if (!category) return;
-    categoryId = category.id;
-    updateGuildSettings(guild.id, { invites_category_id: categoryId });
+    const existing = findByName(guild, "📨┃Invitaciones", ChannelType.GuildCategory);
+    if (existing) {
+      categoryId = existing.id;
+      updateGuildSettings(guild.id, { invites_category_id: categoryId });
+    } else if (me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      const category = await guild.channels.create({ name: "📨┃Invitaciones", type: ChannelType.GuildCategory }).catch(() => null);
+      if (!category) return;
+      categoryId = category.id;
+      updateGuildSettings(guild.id, { invites_category_id: categoryId });
+    } else {
+      return;
+    }
   }
 
   if (!(await channelStillExists(guild, settings.invites_channel_id))) {
-    const channel = await guild.channels
-      .create({ name: "📨┃invitaciones", type: ChannelType.GuildText, parent: categoryId })
-      .catch(() => null);
-    if (channel) updateGuildSettings(guild.id, { invites_channel_id: channel.id });
+    const existing = findByName(guild, "📨┃invitaciones", ChannelType.GuildText);
+    if (existing) {
+      updateGuildSettings(guild.id, { invites_channel_id: existing.id });
+    } else if (me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      const channel = await guild.channels
+        .create({ name: "📨┃invitaciones", type: ChannelType.GuildText, parent: categoryId })
+        .catch(() => null);
+      if (channel) updateGuildSettings(guild.id, { invites_channel_id: channel.id });
+    }
   }
 }
 
