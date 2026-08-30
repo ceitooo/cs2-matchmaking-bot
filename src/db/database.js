@@ -100,13 +100,7 @@ CREATE TABLE IF NOT EXISTS guild_settings (
   shop_panel_channel_id TEXT,
   shop_panel_message_id TEXT,
   antiraid_enabled INTEGER NOT NULL DEFAULT 1,
-  antiraid_log_channel_id TEXT,
-  wallpaper_pc_channel_id TEXT,
-  wallpaper_mobile_channel_id TEXT,
-  wallpaper_category TEXT NOT NULL DEFAULT 'mixed',
-  wallpaper_last_posted_at INTEGER,
-  banner_channel_id TEXT,
-  icon_channel_id TEXT
+  antiraid_log_channel_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS shop_products (
@@ -139,12 +133,12 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN boost_color TEXT",
   "ALTER TABLE guild_settings ADD COLUMN antiraid_enabled INTEGER NOT NULL DEFAULT 1",
   "ALTER TABLE guild_settings ADD COLUMN antiraid_log_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN wallpaper_pc_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN wallpaper_mobile_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN wallpaper_category TEXT NOT NULL DEFAULT 'mixed'",
-  "ALTER TABLE guild_settings ADD COLUMN wallpaper_last_posted_at INTEGER",
-  "ALTER TABLE guild_settings ADD COLUMN banner_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN icon_channel_id TEXT"
+  "ALTER TABLE guild_settings DROP COLUMN wallpaper_pc_channel_id",
+  "ALTER TABLE guild_settings DROP COLUMN wallpaper_mobile_channel_id",
+  "ALTER TABLE guild_settings DROP COLUMN wallpaper_category",
+  "ALTER TABLE guild_settings DROP COLUMN wallpaper_last_posted_at",
+  "ALTER TABLE guild_settings DROP COLUMN banner_channel_id",
+  "ALTER TABLE guild_settings DROP COLUMN icon_channel_id"
 ]) {
   try {
     database.exec(migration);

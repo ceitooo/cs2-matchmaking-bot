@@ -3,7 +3,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const { startSteamAuthServer } = require("./steam/server");
-const { startWallpaperScheduler } = require("./schedulers/wallpaperScheduler");
 
 const client = new Client({
   intents: [
@@ -33,5 +32,4 @@ for (const file of fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"))) 
 }
 
 startSteamAuthServer(client);
-startWallpaperScheduler(client);
 client.login(process.env.DISCORD_TOKEN);

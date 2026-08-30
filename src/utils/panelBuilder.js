@@ -18,7 +18,7 @@ function buildLobbyPanel(lobbyId) {
 
   const players = db
     .prepare(
-      `SELECT lobby_players.*, players.username, players.avatar_url FROM lobby_players
+      `SELECT lobby_players.*, players.username, players.avatar_url, players.steam_id FROM lobby_players
        JOIN players ON players.user_id = lobby_players.user_id
        WHERE lobby_id = ? ORDER BY joined_at ASC`
     )
@@ -61,6 +61,18 @@ function buildLobbyPanel(lobbyId) {
   );
 
   const components = [row1, row2];
+
+  if (creator?.steam_id) {
+    components.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel(`Agregar a ${creator.username} en Steam`)
+          .setStyle(ButtonStyle.Link)
+          .setEmoji("🎮")
+          .setURL(`https://steamcommunity.com/profiles/${creator.steam_id}`)
+      )
+    );
+  }
 
   if (players.length > 0) {
     const kickMenu = new StringSelectMenuBuilder()
