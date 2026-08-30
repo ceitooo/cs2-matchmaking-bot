@@ -6,7 +6,12 @@ const { startSteamAuthServer } = require("./steam/server");
 const { startWallpaperScheduler } = require("./schedulers/wallpaperScheduler");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
 client.commands = new Collection();
