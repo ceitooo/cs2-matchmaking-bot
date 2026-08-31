@@ -87,8 +87,13 @@ function isGreeting(content) {
   return /^h?o+l+a+s?$/.test(normalized);
 }
 
+function isTicketChannel(channel) {
+  return channel.name.startsWith("ticket-") || channel.parent?.name === "🎫・Tickets";
+}
+
 async function handleGreeting(message) {
   if (message.author.bot) return;
+  if (isTicketChannel(message.channel)) return;
   if (!isGreeting(message.content)) return;
   await message.reply("👋 ¡Hola! ¿Cómo estás?").catch(() => {});
 }
