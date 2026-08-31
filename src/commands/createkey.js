@@ -1,13 +1,23 @@
+const crypto = require("node:crypto");
 const { SlashCommandBuilder } = require("discord.js");
 const { addKey, getAvailableResources } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 
+function generateKey(resource) {
+  const prefix = resource
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8) || "KEY";
+  const random = crypto.randomBytes(6).toString("hex").toUpperCase().match(/.{1,4}/g).join("-");
+  return `${prefix}-${random}`;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("createkey")
-    .setDescription("Carga una key al pool de premios por invitaciones")
+    .setDescription("Genera una key automáticamente y la agrega al pool de premios por invitaciones")
     .addStringOption((o) => o.setName("recurso").setDescription("Nombre del recurso (ej: Ceitus, Netflix, Disney+)").setRequired(true))
-    .addStringOption((o) => o.setName("key").setDescription("La key/código a entregar").setRequired(true)),
+    .addIntegerOption((o) => o.setName("cantidad").setDescription("Cuántas keys generar (default 1)").setMinValue(1).setMaxValue(50).setRequired(false)),
 
   async execute(interaction) {
     if (!isStaffOrCeito(interaction)) {
@@ -15,12 +25,22 @@ module.exports = {
     }
 
     const resource = interaction.options.getString("recurso").trim();
-    const key = interaction.options.getString("key").trim();
+    const cantidad = interaction.options.getInteger("cantidad") ?? 1;
 
-    addKey(interaction.guild.id, resource, key, interaction.user.id);
+    const generated = [];
+    for (let i = 0; i < cantidad; i++) {
+      const key = generateKey(resource);
+      addKey(interaction.guild.id, resource, key, interaction.user.id);
+      generated.push(key);
+    }
 
-    const stock = getAvailableResources(interaction.guild.id).find((r) => r.resource === resource)?.stock ?? 1;
+    const stock = getAvailableResources(interaction.guild.id).find((r) => r.resource === resource)?.stock ?? cantidad;
 
-    await interaction.reply({ content: `✅ Key agregada al pool de **${resource}** (stock disponible: ${stock}).`, flags: 64 });
+    await interaction.reply({
+      content:
+        `✅ ${cantidad === 1 ? "Key generada" : `${cantidad} keys generadas`} para **${resource}** (stock disponible: ${stock}):\n` +
+        `\`\`\`${generated.join("\n")}\`\`\``,
+      flags: 64
+    });
   }
 };
