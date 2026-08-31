@@ -58,9 +58,21 @@ module.exports = {
       const attachment = interaction.options.getAttachment("imagen");
       const imagenUrl = interaction.options.getString("imagen_url");
 
+      const imageUrl = attachment?.url || imagenUrl || null;
+
       db.prepare(
         "INSERT INTO shop_products (guild_id, category, name, price, description, image_url, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      ).run(guildId, categoria, nombre, precio, descripcion ?? null, attachment?.url || imagenUrl || null, 0, Date.now());
+      ).run(guildId, categoria, nombre, precio, descripcion ?? null, imageUrl, 0, Date.now());
+
+      const anunciosChannel = interaction.guild.channels.cache.find((c) => c.name === "📢・anuncios");
+      if (anunciosChannel?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setTitle("🆕 Nuevo producto disponible")
+          .setColor(0xe91e8c)
+          .addFields({ name: nombre, value: `${descripcion ? `${descripcion}\n` : ""}Precio: **${precio}**\nCategoría: ${categoria}` });
+        if (imageUrl) embed.setImage(imageUrl);
+        await anunciosChannel.send({ embeds: [embed] }).catch(() => {});
+      }
 
       return interaction.reply({ content: `✅ Producto **${nombre}** agregado en la categoría **${categoria}**. Usa \`/tienda publicar\` para actualizar el panel.`, flags: 64 });
     }

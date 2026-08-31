@@ -3,6 +3,7 @@ const { runAutoSetup } = require("../utils/autoSetup");
 const { startSubscriptionChecker } = require("../utils/subscriptionChecker");
 const { startGiveawayChecker } = require("../utils/giveawayChecker");
 const { startDbBackups } = require("../utils/dbBackup");
+const { startPersonalReminderChecker } = require("../utils/personalReminderChecker");
 
 module.exports = {
   name: "clientReady",
@@ -14,5 +15,6 @@ module.exports = {
     startSubscriptionChecker(client);
     startGiveawayChecker(client);
     startDbBackups(client);
+    startPersonalReminderChecker(client);
   }
 };

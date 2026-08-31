@@ -23,8 +23,31 @@ module.exports = {
     )
     .addSubcommand((sub) => sub.setName("ver").setDescription("Lista todos los recordatorios activos"))
     .addSubcommand((sub) =>
-      sub.setName("quitar").setDescription("Elimina un recordatorio").addIntegerOption((o) => o.setName("id").setDescription("ID del recordatorio").setRequired(true))
+      sub
+        .setName("quitar")
+        .setDescription("Elimina un recordatorio")
+        .addIntegerOption((o) => o.setName("id").setDescription("Elegí el recordatorio de la lista").setRequired(true).setAutocomplete(true))
     ),
+
+  async autocomplete(interaction) {
+    const focused = interaction.options.getFocused(true);
+    if (focused.name !== "id") return interaction.respond([]);
+
+    const subs = listSubscriptions(interaction.guild.id);
+    const search = String(focused.value).toLowerCase();
+
+    const choices = subs
+      .map((s) => {
+        const member = interaction.guild.members.cache.get(s.user_id);
+        const who = member?.user.username ?? s.user_id;
+        const fecha = new Date(s.expires_at).toLocaleDateString("es-AR");
+        return { name: `#${s.id} — ${who} — ${s.product} (vence ${fecha})`.slice(0, 100), value: s.id };
+      })
+      .filter((c) => c.name.toLowerCase().includes(search))
+      .slice(0, 25);
+
+    await interaction.respond(choices);
+  },
 
   async execute(interaction) {
     if (!isStaffOrCeito(interaction)) {

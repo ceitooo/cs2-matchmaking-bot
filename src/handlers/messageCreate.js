@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
-const { getGuildSettings, updateGuildSettings, addKey, keyExists, getAfk, clearAfk } = require("../db/database");
+const { getGuildSettings, updateGuildSettings, addKey, keyExists, getAfk, clearAfk, listFaqs, incrementAutomodOffense, addWarn, listBlacklistWords } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
@@ -76,6 +76,50 @@ async function ensureInviteStickyBottom(message, settings) {
   if (sticky) updateGuildSettings(message.guild.id, { invites_sticky_message_id: sticky.id });
 }
 
+async function scrubVerificationChannel(message) {
+  if (message.channel.name !== "✅・verificacion") return;
+  if (message.author.bot) return;
+  await message.delete().catch(() => {});
+}
+
+function isGreeting(content) {
+  const normalized = content.trim().toLowerCase().replace(/[!¡.,¿?]+$/g, "");
+  return /^h?o+l+a+s?$/.test(normalized);
+}
+
+async function handleGreeting(message) {
+  if (message.author.bot) return;
+  if (!isGreeting(message.content)) return;
+  await message.reply("👋 ¡Hola! ¿Cómo estás?").catch(() => {});
+}
+
+async function handleFaq(message) {
+  if (message.author.bot) return;
+
+  const content = message.content.toLowerCase();
+  const faqs = listFaqs(message.guild.id);
+  const match = faqs.find((f) => content.includes(f.keyword));
+  if (!match) return;
+
+  await message.reply(match.respuesta).catch(() => {});
+}
+
+async function handleBlacklist(message) {
+  if (message.author.bot) return;
+  if (isStaffOrCeito({ member: message.member, memberPermissions: message.member?.permissions })) return;
+
+  const content = message.content.toLowerCase();
+  const words = listBlacklistWords(message.guild.id);
+  const match = words.find((w) => content.includes(w.word));
+  if (!match) return;
+
+  await message.delete().catch(() => {});
+  await message.channel
+    .send(`🚫 ${message.author}, ese mensaje contenía una palabra prohibida y fue eliminado.`)
+    .then((m) => setTimeout(() => m.delete().catch(() => {}), 6000))
+    .catch(() => {});
+}
+
 async function handleAfk(message) {
   if (message.author.bot) return;
   const guildId = message.guild.id;
@@ -104,6 +148,10 @@ module.exports = {
     const settings = getGuildSettings(message.guild.id);
     await detectAndStoreKeys(message, settings);
     await ensureInviteStickyBottom(message, settings);
+    await scrubVerificationChannel(message);
+    await handleGreeting(message);
+    await handleFaq(message);
+    await handleBlacklist(message);
     await handleAfk(message);
 
     if (message.author.bot) return;
@@ -112,7 +160,27 @@ module.exports = {
 
     if (!isSpamming(message.guild.id, message.author.id)) return;
 
+    const offenseCount = incrementAutomodOffense(message.guild.id, message.author.id);
     const member = message.member;
+
+    if (offenseCount === 1) {
+      await message.channel
+        .send(`⚠️ ${message.author}, dejá de mandar mensajes tan seguido o te voy a silenciar.`)
+        .then((m) => setTimeout(() => m.delete().catch(() => {}), 8000))
+        .catch(() => {});
+      return;
+    }
+
+    if (offenseCount === 3) {
+      addWarn(message.guild.id, message.author.id, message.client.user.id, "Spam de mensajes (automod, reincidente)");
+      await message.channel
+        .send(`📋 ${message.author} recibió un **warn** por seguir haciendo spam después de la advertencia y el silencio.`)
+        .then((m) => setTimeout(() => m.delete().catch(() => {}), 8000))
+        .catch(() => {});
+      return;
+    }
+
+    // offenseCount === 2, o 4+ (sigue aislando cada vez que reincide)
     if (!member?.moderatable) return;
 
     await member.timeout(MUTE_DURATION_MS, "Automod: spam de mensajes").catch(() => {});
@@ -126,7 +194,7 @@ module.exports = {
       const logChannel = await message.guild.channels.fetch(settings.log_server_channel_id).catch(() => null);
       if (logChannel?.isTextBased()) {
         await logChannel
-          .send(`🔇 **Automod:** ${message.author.tag} (${message.author.id}) silenciado 1 minuto por spam en <#${message.channelId}>.`)
+          .send(`🔇 **Automod:** ${message.author.tag} (${message.author.id}) silenciado 1 minuto por spam en <#${message.channelId}> (infracción #${offenseCount}).`)
           .catch(() => {});
       }
     }

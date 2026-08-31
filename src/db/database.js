@@ -177,6 +177,41 @@ CREATE TABLE IF NOT EXISTS giveaways (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS faqs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  keyword TEXT NOT NULL,
+  respuesta TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS personal_reminders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  message TEXT NOT NULL,
+  remind_at INTEGER NOT NULL,
+  sent INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS automod_offenses (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS blacklist_words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  word TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reward_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -232,6 +267,7 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN recordatorios_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN recordatorios_category_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN backups_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN self_roles_json TEXT",
   "ALTER TABLE guild_settings ADD COLUMN backups_category_id TEXT"
 ]) {
   try {
@@ -437,6 +473,64 @@ function endGiveawayDb(id) {
   db.prepare("UPDATE giveaways SET ended = 1 WHERE id = ?").run(id);
 }
 
+function addFaq(guildId, keyword, respuesta, createdBy) {
+  db.prepare("INSERT INTO faqs (guild_id, keyword, respuesta, created_by, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    guildId,
+    keyword.toLowerCase(),
+    respuesta,
+    createdBy,
+    Date.now()
+  );
+  return db.prepare("SELECT * FROM faqs WHERE guild_id = ? ORDER BY id DESC LIMIT 1").get(guildId);
+}
+
+function listFaqs(guildId) {
+  return db.prepare("SELECT * FROM faqs WHERE guild_id = ? ORDER BY id ASC").all(guildId);
+}
+
+function deleteFaq(guildId, id) {
+  return db.prepare("DELETE FROM faqs WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
+}
+
+function addPersonalReminder(guildId, userId, message, remindAt) {
+  db.prepare("INSERT INTO personal_reminders (guild_id, user_id, message, remind_at, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    guildId,
+    userId,
+    message,
+    remindAt,
+    Date.now()
+  );
+  return db.prepare("SELECT * FROM personal_reminders WHERE guild_id = ? ORDER BY id DESC LIMIT 1").get(guildId);
+}
+
+function getDuePersonalReminders() {
+  return db.prepare("SELECT * FROM personal_reminders WHERE sent = 0 AND remind_at <= ?").all(Date.now());
+}
+
+function markPersonalReminderSent(id) {
+  db.prepare("UPDATE personal_reminders SET sent = 1 WHERE id = ?").run(id);
+}
+
+function incrementAutomodOffense(guildId, userId) {
+  db.prepare(
+    "INSERT INTO automod_offenses (guild_id, user_id, count, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(guild_id, user_id) DO UPDATE SET count = count + 1, updated_at = ?"
+  ).run(guildId, userId, Date.now(), Date.now());
+  return db.prepare("SELECT count FROM automod_offenses WHERE guild_id = ? AND user_id = ?").get(guildId, userId).count;
+}
+
+function addBlacklistWord(guildId, word, createdBy) {
+  db.prepare("INSERT INTO blacklist_words (guild_id, word, created_by, created_at) VALUES (?, ?, ?, ?)").run(guildId, word.toLowerCase(), createdBy, Date.now());
+  return db.prepare("SELECT * FROM blacklist_words WHERE guild_id = ? ORDER BY id DESC LIMIT 1").get(guildId);
+}
+
+function listBlacklistWords(guildId) {
+  return db.prepare("SELECT * FROM blacklist_words WHERE guild_id = ? ORDER BY id ASC").all(guildId);
+}
+
+function deleteBlacklistWord(guildId, id) {
+  return db.prepare("DELETE FROM blacklist_words WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
+}
+
 function claimKey(guildId, resource, userId) {
   const key = db.prepare("SELECT * FROM reward_keys WHERE guild_id = ? AND resource = ? AND used = 0 ORDER BY id ASC LIMIT 1").get(guildId, resource);
   if (!key) return null;
@@ -475,6 +569,16 @@ module.exports = {
   setAfk,
   getAfk,
   clearAfk,
+  addFaq,
+  listFaqs,
+  deleteFaq,
+  incrementAutomodOffense,
+  addBlacklistWord,
+  listBlacklistWords,
+  deleteBlacklistWord,
+  addPersonalReminder,
+  getDuePersonalReminders,
+  markPersonalReminderSent,
   addSubscription,
   listSubscriptions,
   deleteSubscription,
