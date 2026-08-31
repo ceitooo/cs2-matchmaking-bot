@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
-const { getGuildSettings, updateGuildSettings, addKey, keyExists } = require("../db/database");
+const { getGuildSettings, updateGuildSettings, addKey, keyExists, getAfk, clearAfk } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
@@ -76,6 +76,26 @@ async function ensureInviteStickyBottom(message, settings) {
   if (sticky) updateGuildSettings(message.guild.id, { invites_sticky_message_id: sticky.id });
 }
 
+async function handleAfk(message) {
+  if (message.author.bot) return;
+  const guildId = message.guild.id;
+
+  const selfAfk = getAfk(guildId, message.author.id);
+  if (selfAfk) {
+    clearAfk(guildId, message.author.id);
+    await message.reply(`👋 Bienvenido de vuelta, ${message.author}. Te quité el AFK.`).catch(() => {});
+  }
+
+  if (message.mentions.users.size === 0) return;
+  for (const [, user] of message.mentions.users) {
+    if (user.id === message.author.id) continue;
+    const afk = getAfk(guildId, user.id);
+    if (afk) {
+      await message.reply(`💤 **${user.username}** está AFK — motivo: ${afk.reason}`).catch(() => {});
+    }
+  }
+}
+
 module.exports = {
   name: "messageCreate",
   async execute(message) {
@@ -84,6 +104,7 @@ module.exports = {
     const settings = getGuildSettings(message.guild.id);
     await detectAndStoreKeys(message, settings);
     await ensureInviteStickyBottom(message, settings);
+    await handleAfk(message);
 
     if (message.author.bot) return;
     if (!settings.automod_enabled) return;

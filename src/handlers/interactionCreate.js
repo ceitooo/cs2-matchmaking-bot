@@ -1,5 +1,5 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
-const { db, getOrCreatePlayer, claimKey } = require("../db/database");
+const { db, getOrCreatePlayer, claimKey, getGuildSettings, getAvailableResources } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
@@ -8,6 +8,26 @@ const { createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } =
 const { isStaffOrCeito } = require("../utils/permissions");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
+const LOW_STOCK_THRESHOLD = 2;
+
+async function warnIfLowStock(client, guildId, resource) {
+  const settings = getGuildSettings(guildId);
+  if (!settings.stock_keys_channel_id) return;
+
+  const stock = getAvailableResources(guildId).find((r) => r.resource === resource)?.stock ?? 0;
+  if (stock > LOW_STOCK_THRESHOLD) return;
+
+  const channel = await client.channels.fetch(settings.stock_keys_channel_id).catch(() => null);
+  if (!channel?.isTextBased()) return;
+
+  await channel
+    .send(
+      stock === 0
+        ? `🚨 **${resource}** se quedó sin stock. Cargá más keys acá.`
+        : `⚠️ Stock bajo de **${resource}**: quedan **${stock}**.`
+    )
+    .catch(() => {});
+}
 
 function parseId(customId) {
   const [action, lobbyId] = customId.split(":");
@@ -141,7 +161,9 @@ module.exports = {
         return interaction.reply({ content: `❌ Se quedó sin stock justo ahora. Avisale a un admin para que cargue más de **${resource}**.`, flags: 64 });
       }
 
-      return interaction.reply({ content: `🔑 Acá tenés tu key de **${resource}** (1 día):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
+      await interaction.reply({ content: `🔑 Acá tenés tu key de **${resource}** (1 día):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
+      await warnIfLowStock(interaction.client, guildId, resource);
+      return;
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === "shop_buy_select") {

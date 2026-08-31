@@ -143,6 +143,14 @@ CREATE TABLE IF NOT EXISTS invites (
   PRIMARY KEY (guild_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS afk_status (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT 'AFK',
+  set_at INTEGER NOT NULL,
+  PRIMARY KEY (guild_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS reward_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -326,6 +334,20 @@ function deleteKey(guildId, keyValue) {
   return db.prepare("DELETE FROM reward_keys WHERE guild_id = ? AND key_value = ? AND used = 0").run(guildId, keyValue).changes;
 }
 
+function setAfk(guildId, userId, reason) {
+  db.prepare(
+    "INSERT INTO afk_status (guild_id, user_id, reason, set_at) VALUES (?, ?, ?, ?) ON CONFLICT(guild_id, user_id) DO UPDATE SET reason = ?, set_at = ?"
+  ).run(guildId, userId, reason, Date.now(), reason, Date.now());
+}
+
+function getAfk(guildId, userId) {
+  return db.prepare("SELECT * FROM afk_status WHERE guild_id = ? AND user_id = ?").get(guildId, userId);
+}
+
+function clearAfk(guildId, userId) {
+  return db.prepare("DELETE FROM afk_status WHERE guild_id = ? AND user_id = ?").run(guildId, userId).changes;
+}
+
 function claimKey(guildId, resource, userId) {
   const key = db.prepare("SELECT * FROM reward_keys WHERE guild_id = ? AND resource = ? AND used = 0 ORDER BY id ASC LIMIT 1").get(guildId, resource);
   if (!key) return null;
@@ -355,5 +377,8 @@ module.exports = {
   claimKey,
   clearStock,
   deleteKey,
+  setAfk,
+  getAfk,
+  clearAfk,
   INVITES_PER_REWARD
 };
