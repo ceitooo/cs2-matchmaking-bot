@@ -1,5 +1,8 @@
-const { getGuildSettings, addKey, keyExists } = require("../db/database");
+const { EmbedBuilder } = require("discord.js");
+const { getGuildSettings, updateGuildSettings, addKey, keyExists } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
+
+const STICKY_TITLE = "📨 Recompensas por invitar";
 
 const SPAM_WINDOW_MS = 5000;
 const SPAM_MAX_MESSAGES = 5;
@@ -53,6 +56,26 @@ async function detectAndStoreKeys(message, settings) {
   await message.channel.send(`✅ ${added.length} llave${added.length === 1 ? "" : "s"} guardada${added.length === 1 ? "" : "s"} con éxito (${summary}).`).catch(() => {});
 }
 
+async function ensureInviteStickyBottom(message, settings) {
+  if (!settings.invites_channel_id || message.channelId !== settings.invites_channel_id) return;
+  if (message.author.id === message.client.user.id && message.embeds[0]?.title === STICKY_TITLE) return;
+
+  const channel = message.channel;
+
+  if (settings.invites_sticky_message_id) {
+    const old = await channel.messages.fetch(settings.invites_sticky_message_id).catch(() => null);
+    if (old) await old.delete().catch(() => {});
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(STICKY_TITLE)
+    .setColor(0x5865f2)
+    .setDescription("Por cada **5 invitaciones** válidas conseguís **1 día** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
+
+  const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
+  if (sticky) updateGuildSettings(message.guild.id, { invites_sticky_message_id: sticky.id });
+}
+
 module.exports = {
   name: "messageCreate",
   async execute(message) {
@@ -60,6 +83,7 @@ module.exports = {
 
     const settings = getGuildSettings(message.guild.id);
     await detectAndStoreKeys(message, settings);
+    await ensureInviteStickyBottom(message, settings);
 
     if (message.author.bot) return;
     if (!settings.automod_enabled) return;

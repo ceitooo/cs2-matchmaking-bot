@@ -193,7 +193,8 @@ for (const migration of [
   "ALTER TABLE lobbies ADD COLUMN match_started_notified INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE invites ADD COLUMN reward_progress INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE guild_settings ADD COLUMN stock_keys_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN stock_keys_category_id TEXT"
+  "ALTER TABLE guild_settings ADD COLUMN stock_keys_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN invites_sticky_message_id TEXT"
 ]) {
   try {
     database.exec(migration);

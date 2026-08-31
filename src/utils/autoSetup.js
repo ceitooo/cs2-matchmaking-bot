@@ -1,4 +1,4 @@
-const { ChannelType, PermissionFlagsBits } = require("discord.js");
+const { ChannelType, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const { getGuildSettings, updateGuildSettings } = require("../db/database");
 const { CEITO_ROLE_ID, DEVELOPER_ROLE_ID } = require("./permissions");
 
@@ -101,6 +101,21 @@ async function ensureInvitesSetup(guild, settings) {
   }
 }
 
+async function ensureInviteStickyExists(guild, settings) {
+  if (!settings.invites_channel_id || settings.invites_sticky_message_id) return;
+
+  const channel = await guild.channels.fetch(settings.invites_channel_id).catch(() => null);
+  if (!channel?.isTextBased()) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("📨 Recompensas por invitar")
+    .setColor(0x5865f2)
+    .setDescription("Por cada **5 invitaciones** válidas conseguís **1 día** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
+
+  const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
+  if (sticky) updateGuildSettings(guild.id, { invites_sticky_message_id: sticky.id });
+}
+
 const STOCK_KEYS_PERMS = [
   { id: CEITO_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
   { id: DEVELOPER_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
@@ -159,6 +174,9 @@ async function runAutoSetup(client) {
 
     const refreshed = getGuildSettings(guild.id);
     await ensureInvitesSetup(guild, refreshed).catch((e) => console.error(`[auto-setup] invites en ${guild.name}:`, e.message));
+
+    const refreshedInvites = getGuildSettings(guild.id);
+    await ensureInviteStickyExists(guild, refreshedInvites).catch((e) => console.error(`[auto-setup] sticky invites en ${guild.name}:`, e.message));
 
     const refreshed2 = getGuildSettings(guild.id);
     await ensureStockKeysSetup(guild, refreshed2).catch((e) => console.error(`[auto-setup] stock-keys en ${guild.name}:`, e.message));
