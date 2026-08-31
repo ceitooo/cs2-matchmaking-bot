@@ -26,11 +26,17 @@ module.exports = {
     const startedBoosting = !oldMember.premiumSince && newMember.premiumSince;
     if (!startedBoosting) return;
 
-    if (!settings.boost_channel_id) return;
+    if (!settings.boost_channel_id) {
+      console.warn(`[boost] ${newMember.user.tag} boosteó pero no hay boost_channel_id configurado en ${newMember.guild.name}.`);
+      return;
+    }
 
-    const channel = await newMember.guild.channels.fetch(settings.boost_channel_id).catch(() => null);
+    const channel = await newMember.guild.channels.fetch(settings.boost_channel_id).catch((e) => {
+      console.error(`[boost] No pude fetchear el canal ${settings.boost_channel_id}:`, e.message);
+      return null;
+    });
     if (!channel) return;
 
-    await channel.send(buildBoostMessage(newMember, newMember.guild, settings)).catch(() => {});
+    await channel.send(buildBoostMessage(newMember, newMember.guild, settings)).catch((e) => console.error("[boost] Error mandando el mensaje:", e.message));
   }
 };
