@@ -123,7 +123,8 @@ async function createProductTicket(guild, member, product) {
 
   const buttonsRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`ticket_close:${channel.id}`).setLabel("Cerrar ticket").setStyle(ButtonStyle.Danger).setEmoji("🔒"),
-    new ButtonBuilder().setCustomId(`ticket_ping:${channel.id}`).setLabel("Avisar al staff").setStyle(ButtonStyle.Secondary).setEmoji("🔔")
+    new ButtonBuilder().setCustomId(`ticket_ping:${channel.id}`).setLabel("Avisar al staff").setStyle(ButtonStyle.Secondary).setEmoji("🔔"),
+    new ButtonBuilder().setCustomId(`ticket_renew:${channel.id}:${member.id}`).setLabel("Programar renovación").setStyle(ButtonStyle.Primary).setEmoji("🔁")
   );
 
   await channel.send({

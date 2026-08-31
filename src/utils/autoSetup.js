@@ -167,6 +167,92 @@ async function ensureStockKeysSetup(guild, settings) {
   if (channel) updateGuildSettings(guild.id, { stock_keys_channel_id: channel.id });
 }
 
+async function ensureRecordatoriosSetup(guild, settings) {
+  const me = guild.members.me;
+  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) return;
+
+  let categoryId = settings.recordatorios_category_id;
+  if (!(await channelStillExists(guild, categoryId))) {
+    const existingCategory = findByName(guild, "⏰┃Recordatorios", ChannelType.GuildCategory);
+    if (existingCategory) {
+      categoryId = existingCategory.id;
+    } else {
+      const category = await guild.channels
+        .create({
+          name: "⏰┃Recordatorios",
+          type: ChannelType.GuildCategory,
+          position: guild.channels.cache.size,
+          permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, ...STOCK_KEYS_PERMS]
+        })
+        .catch(() => null);
+      if (!category) return;
+      categoryId = category.id;
+    }
+    updateGuildSettings(guild.id, { recordatorios_category_id: categoryId });
+  }
+
+  if (await channelStillExists(guild, settings.recordatorios_channel_id)) return;
+
+  const existingChannel = findByName(guild, "⏰┃recordatorios", ChannelType.GuildText);
+  if (existingChannel) {
+    updateGuildSettings(guild.id, { recordatorios_channel_id: existingChannel.id });
+    return;
+  }
+
+  const channel = await guild.channels
+    .create({
+      name: "⏰┃recordatorios",
+      type: ChannelType.GuildText,
+      parent: categoryId,
+      permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, ...STOCK_KEYS_PERMS]
+    })
+    .catch(() => null);
+  if (channel) updateGuildSettings(guild.id, { recordatorios_channel_id: channel.id });
+}
+
+async function ensureBackupsSetup(guild, settings) {
+  const me = guild.members.me;
+  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) return;
+
+  let categoryId = settings.backups_category_id;
+  if (!(await channelStillExists(guild, categoryId))) {
+    const existingCategory = findByName(guild, "🗄️┃Backups", ChannelType.GuildCategory);
+    if (existingCategory) {
+      categoryId = existingCategory.id;
+    } else {
+      const category = await guild.channels
+        .create({
+          name: "🗄️┃Backups",
+          type: ChannelType.GuildCategory,
+          position: guild.channels.cache.size,
+          permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, ...STOCK_KEYS_PERMS]
+        })
+        .catch(() => null);
+      if (!category) return;
+      categoryId = category.id;
+    }
+    updateGuildSettings(guild.id, { backups_category_id: categoryId });
+  }
+
+  if (await channelStillExists(guild, settings.backups_channel_id)) return;
+
+  const existingChannel = findByName(guild, "🗄️┃backups", ChannelType.GuildText);
+  if (existingChannel) {
+    updateGuildSettings(guild.id, { backups_channel_id: existingChannel.id });
+    return;
+  }
+
+  const channel = await guild.channels
+    .create({
+      name: "🗄️┃backups",
+      type: ChannelType.GuildText,
+      parent: categoryId,
+      permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, ...STOCK_KEYS_PERMS]
+    })
+    .catch(() => null);
+  if (channel) updateGuildSettings(guild.id, { backups_channel_id: channel.id });
+}
+
 async function runAutoSetup(client) {
   for (const guild of client.guilds.cache.values()) {
     const settings = getGuildSettings(guild.id);
@@ -180,6 +266,12 @@ async function runAutoSetup(client) {
 
     const refreshed2 = getGuildSettings(guild.id);
     await ensureStockKeysSetup(guild, refreshed2).catch((e) => console.error(`[auto-setup] stock-keys en ${guild.name}:`, e.message));
+
+    const refreshed3 = getGuildSettings(guild.id);
+    await ensureRecordatoriosSetup(guild, refreshed3).catch((e) => console.error(`[auto-setup] recordatorios en ${guild.name}:`, e.message));
+
+    const refreshed4 = getGuildSettings(guild.id);
+    await ensureBackupsSetup(guild, refreshed4).catch((e) => console.error(`[auto-setup] backups en ${guild.name}:`, e.message));
   }
 }
 

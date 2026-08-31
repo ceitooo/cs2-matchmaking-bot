@@ -5,7 +5,8 @@ const { DatabaseSync } = require("node:sqlite");
 const dataDir = path.join(__dirname, "..", "..", "data");
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const database = new DatabaseSync(path.join(dataDir, "matchmaking.db"));
+const dbPath = path.join(dataDir, "matchmaking.db");
+const database = new DatabaseSync(dbPath);
 database.exec("PRAGMA journal_mode = WAL;");
 
 database.exec(`
@@ -151,6 +152,31 @@ CREATE TABLE IF NOT EXISTS afk_status (
   PRIMARY KEY (guild_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  product TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  notified_3d INTEGER NOT NULL DEFAULT 0,
+  notified_0d INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS giveaways (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  prize TEXT NOT NULL,
+  winners_count INTEGER NOT NULL DEFAULT 1,
+  ends_at INTEGER NOT NULL,
+  ended INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reward_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -202,7 +228,11 @@ for (const migration of [
   "ALTER TABLE invites ADD COLUMN reward_progress INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE guild_settings ADD COLUMN stock_keys_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN stock_keys_category_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN invites_sticky_message_id TEXT"
+  "ALTER TABLE guild_settings ADD COLUMN invites_sticky_message_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN recordatorios_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN recordatorios_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN backups_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN backups_category_id TEXT"
 ]) {
   try {
     database.exec(migration);
@@ -348,6 +378,65 @@ function clearAfk(guildId, userId) {
   return db.prepare("DELETE FROM afk_status WHERE guild_id = ? AND user_id = ?").run(guildId, userId).changes;
 }
 
+function addSubscription(guildId, userId, product, expiresAt, createdBy) {
+  db.prepare("INSERT INTO subscriptions (guild_id, user_id, product, expires_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(
+    guildId,
+    userId,
+    product,
+    expiresAt,
+    createdBy,
+    Date.now()
+  );
+  return db.prepare("SELECT * FROM subscriptions WHERE guild_id = ? ORDER BY id DESC LIMIT 1").get(guildId);
+}
+
+function listSubscriptions(guildId) {
+  return db.prepare("SELECT * FROM subscriptions WHERE guild_id = ? ORDER BY expires_at ASC").all(guildId);
+}
+
+function deleteSubscription(guildId, id) {
+  return db.prepare("DELETE FROM subscriptions WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
+}
+
+function getSubscriptionsToNotify() {
+  const now = Date.now();
+  const in3Days = now + 3 * 24 * 60 * 60 * 1000;
+  return db
+    .prepare(
+      `SELECT * FROM subscriptions
+       WHERE (expires_at <= ? AND notified_3d = 0)
+          OR (expires_at <= ? AND notified_0d = 0)`
+    )
+    .all(in3Days, now);
+}
+
+function markSubscriptionNotified(id, field) {
+  db.prepare(`UPDATE subscriptions SET ${field} = 1 WHERE id = ?`).run(id);
+}
+
+function countActiveSubscriptions(guildId) {
+  return db.prepare("SELECT COUNT(*) as count FROM subscriptions WHERE guild_id = ? AND expires_at > ?").get(guildId, Date.now()).count;
+}
+
+function addGiveaway(guildId, channelId, messageId, prize, winnersCount, endsAt, createdBy) {
+  db.prepare(
+    "INSERT INTO giveaways (guild_id, channel_id, message_id, prize, winners_count, ends_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(guildId, channelId, messageId, prize, winnersCount, endsAt, createdBy, Date.now());
+  return db.prepare("SELECT * FROM giveaways WHERE guild_id = ? ORDER BY id DESC LIMIT 1").get(guildId);
+}
+
+function getActiveGiveawaysDue() {
+  return db.prepare("SELECT * FROM giveaways WHERE ended = 0 AND ends_at <= ?").all(Date.now());
+}
+
+function getGiveaway(guildId, id) {
+  return db.prepare("SELECT * FROM giveaways WHERE guild_id = ? AND id = ?").get(guildId, id);
+}
+
+function endGiveawayDb(id) {
+  db.prepare("UPDATE giveaways SET ended = 1 WHERE id = ?").run(id);
+}
+
 function claimKey(guildId, resource, userId) {
   const key = db.prepare("SELECT * FROM reward_keys WHERE guild_id = ? AND resource = ? AND used = 0 ORDER BY id ASC LIMIT 1").get(guildId, resource);
   if (!key) return null;
@@ -362,6 +451,12 @@ function claimKey(guildId, resource, userId) {
 
 module.exports = {
   db,
+  dbPath,
+  countActiveSubscriptions,
+  addGiveaway,
+  getActiveGiveawaysDue,
+  getGiveaway,
+  endGiveawayDb,
   getOrCreatePlayer,
   getGuildSettings,
   updateGuildSettings,
@@ -380,5 +475,10 @@ module.exports = {
   setAfk,
   getAfk,
   clearAfk,
+  addSubscription,
+  listSubscriptions,
+  deleteSubscription,
+  getSubscriptionsToNotify,
+  markSubscriptionNotified,
   INVITES_PER_REWARD
 };

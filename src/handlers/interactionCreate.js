@@ -1,5 +1,5 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
-const { db, getOrCreatePlayer, claimKey, getGuildSettings, getAvailableResources } = require("../db/database");
+const { db, getOrCreatePlayer, claimKey, getGuildSettings, getAvailableResources, addSubscription } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
@@ -179,6 +179,58 @@ module.exports = {
         return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       }
       return interaction.editReply({ content: `✅ Ticket creado: ${channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("ticket_renew:")) {
+      if (!isStaffOrCeito(interaction)) {
+        return interaction.reply({ content: "Solo el staff o ceito pueden programar renovaciones.", flags: 64 });
+      }
+
+      const [, channelId, targetUserId] = interaction.customId.split(":");
+      const modal = new ModalBuilder()
+        .setCustomId(`ticket_renew_modal:${channelId}:${targetUserId}`)
+        .setTitle("Programar renovación")
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("producto").setLabel("Producto (ej: Netflix)").setStyle(TextInputStyle.Short).setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("cantidad").setLabel("Cantidad (número)").setStyle(TextInputStyle.Short).setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("unidad")
+              .setLabel("Unidad: dias, meses o anios")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith("ticket_renew_modal:")) {
+      const [, , targetUserId] = interaction.customId.split(":");
+      const producto = interaction.fields.getTextInputValue("producto").trim();
+      const cantidad = Number(interaction.fields.getTextInputValue("cantidad").trim());
+      const unidadRaw = interaction.fields.getTextInputValue("unidad").trim().toLowerCase();
+
+      if (!Number.isFinite(cantidad) || cantidad <= 0) {
+        return interaction.reply({ content: "❌ La cantidad tiene que ser un número mayor a 0.", flags: 64 });
+      }
+      if (!["dias", "meses", "anios"].includes(unidadRaw)) {
+        return interaction.reply({ content: "❌ La unidad tiene que ser `dias`, `meses` o `anios`.", flags: 64 });
+      }
+
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const diasEquivalentes = unidadRaw === "anios" ? cantidad * 365 : unidadRaw === "meses" ? cantidad * 30 : cantidad;
+      const expiresAt = Date.now() + diasEquivalentes * DAY_MS;
+
+      const created = addSubscription(interaction.guild.id, targetUserId, producto, expiresAt, interaction.user.id);
+
+      return interaction.reply({
+        content: `✅ Recordatorio #${created.id} programado para <@${targetUserId}> — **${producto}**, vence <t:${Math.floor(expiresAt / 1000)}:R>.`
+      });
     }
 
     if (interaction.isButton() && interaction.customId === "test_key_dm") {
