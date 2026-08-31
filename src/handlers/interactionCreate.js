@@ -1,5 +1,5 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
-const { db, getOrCreatePlayer } = require("../db/database");
+const { db, getOrCreatePlayer, claimKey } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
@@ -130,6 +130,18 @@ module.exports = {
 
       await refreshPanel(interaction, lobbyId);
       return;
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith("invite_reward:")) {
+      const [, guildId] = interaction.customId.split(":");
+      const resource = interaction.values[0];
+
+      const key = claimKey(guildId, resource, interaction.user.id);
+      if (!key) {
+        return interaction.reply({ content: `❌ Se quedó sin stock justo ahora. Avisale a un admin para que cargue más de **${resource}**.`, flags: 64 });
+      }
+
+      return interaction.reply({ content: `🔑 Acá tenés tu key de **${resource}** (1 día):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === "shop_buy_select") {

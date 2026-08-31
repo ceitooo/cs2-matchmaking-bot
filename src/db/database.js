@@ -139,7 +139,20 @@ CREATE TABLE IF NOT EXISTS invites (
   guild_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
   uses INTEGER NOT NULL DEFAULT 0,
+  reward_progress INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS reward_keys (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  key_value TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  redeemed_by TEXT,
+  redeemed_at INTEGER,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL
 );
 `);
 
@@ -177,7 +190,8 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN invites_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN match_alerts_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN automod_enabled INTEGER NOT NULL DEFAULT 1",
-  "ALTER TABLE lobbies ADD COLUMN match_started_notified INTEGER NOT NULL DEFAULT 0"
+  "ALTER TABLE lobbies ADD COLUMN match_started_notified INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE invites ADD COLUMN reward_progress INTEGER NOT NULL DEFAULT 0"
 ]) {
   try {
     database.exec(migration);
@@ -263,6 +277,49 @@ function getInviteCount(guildId, userId) {
   return row?.uses ?? 0;
 }
 
+const INVITES_PER_REWARD = 5;
+
+// Devuelve cuántos premios nuevos desbloqueó (normalmente 0 o 1, pero soporta saltos)
+function claimPendingRewards(guildId, userId) {
+  const row = db.prepare("SELECT * FROM invites WHERE guild_id = ? AND user_id = ?").get(guildId, userId);
+  if (!row) return 0;
+
+  const earned = Math.floor(row.uses / INVITES_PER_REWARD);
+  const pending = earned - row.reward_progress;
+  if (pending <= 0) return 0;
+
+  db.prepare("UPDATE invites SET reward_progress = ? WHERE guild_id = ? AND user_id = ?").run(earned, guildId, userId);
+  return pending;
+}
+
+function addKey(guildId, resource, keyValue, createdBy) {
+  db.prepare("INSERT INTO reward_keys (guild_id, resource, key_value, created_by, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    guildId,
+    resource,
+    keyValue,
+    createdBy,
+    Date.now()
+  );
+}
+
+function getAvailableResources(guildId) {
+  return db
+    .prepare("SELECT resource, COUNT(*) as stock FROM reward_keys WHERE guild_id = ? AND used = 0 GROUP BY resource HAVING stock > 0")
+    .all(guildId);
+}
+
+function claimKey(guildId, resource, userId) {
+  const key = db.prepare("SELECT * FROM reward_keys WHERE guild_id = ? AND resource = ? AND used = 0 ORDER BY id ASC LIMIT 1").get(guildId, resource);
+  if (!key) return null;
+
+  const result = db
+    .prepare("UPDATE reward_keys SET used = 1, redeemed_by = ?, redeemed_at = ? WHERE id = ? AND used = 0")
+    .run(userId, Date.now(), key.id);
+  if (result.changes === 0) return null; // otro proceso se la llevó primero
+
+  return key;
+}
+
 module.exports = {
   db,
   getOrCreatePlayer,
@@ -272,5 +329,10 @@ module.exports = {
   getWarns,
   removeWarn,
   addInviteUse,
-  getInviteCount
+  getInviteCount,
+  claimPendingRewards,
+  addKey,
+  getAvailableResources,
+  claimKey,
+  INVITES_PER_REWARD
 };
