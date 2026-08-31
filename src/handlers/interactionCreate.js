@@ -1,4 +1,4 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require("discord.js");
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
 const { db, getOrCreatePlayer, claimKey } = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
@@ -157,6 +157,27 @@ module.exports = {
         return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       }
       return interaction.editReply({ content: `✅ Ticket creado: ${channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === "test_key_dm") {
+      const dmSent = await interaction.user
+        .send({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("🎉 ¡Felicidades, conseguiste 5 invitaciones!")
+              .setColor(0x2ecc71)
+              .setDescription("Elegí 1 día de uno de los siguientes recursos y te mando la key acá mismo:")
+          ]
+        })
+        .then(() =>
+          interaction.user.send({ content: "🔑 Acá tenés tu key de **Ceitus** (1 día):\n```CEITUS-TEST-TEST-TEST-TEST```\n⚠️ Esta es una key de prueba, no funciona de verdad." })
+        )
+        .catch(() => null);
+
+      if (!dmSent) {
+        return interaction.reply({ content: "❌ No pude enviarte el DM (revisá que tengas los mensajes directos abiertos).", flags: 64 });
+      }
+      return interaction.reply({ content: "✅ Te mandé la simulación por DM.", flags: 64 });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("ticket_ping:")) {
