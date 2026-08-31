@@ -191,7 +191,9 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN match_alerts_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN automod_enabled INTEGER NOT NULL DEFAULT 1",
   "ALTER TABLE lobbies ADD COLUMN match_started_notified INTEGER NOT NULL DEFAULT 0",
-  "ALTER TABLE invites ADD COLUMN reward_progress INTEGER NOT NULL DEFAULT 0"
+  "ALTER TABLE invites ADD COLUMN reward_progress INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE guild_settings ADD COLUMN stock_keys_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN stock_keys_category_id TEXT"
 ]) {
   try {
     database.exec(migration);
@@ -292,6 +294,10 @@ function claimPendingRewards(guildId, userId) {
   return pending;
 }
 
+function keyExists(guildId, keyValue) {
+  return !!db.prepare("SELECT 1 FROM reward_keys WHERE guild_id = ? AND key_value = ?").get(guildId, keyValue);
+}
+
 function addKey(guildId, resource, keyValue, createdBy) {
   db.prepare("INSERT INTO reward_keys (guild_id, resource, key_value, created_by, created_at) VALUES (?, ?, ?, ?, ?)").run(
     guildId,
@@ -306,6 +312,17 @@ function getAvailableResources(guildId) {
   return db
     .prepare("SELECT resource, COUNT(*) as stock FROM reward_keys WHERE guild_id = ? AND used = 0 GROUP BY resource HAVING stock > 0")
     .all(guildId);
+}
+
+function clearStock(guildId, resource) {
+  if (resource) {
+    return db.prepare("DELETE FROM reward_keys WHERE guild_id = ? AND resource = ? AND used = 0").run(guildId, resource).changes;
+  }
+  return db.prepare("DELETE FROM reward_keys WHERE guild_id = ? AND used = 0").run(guildId).changes;
+}
+
+function deleteKey(guildId, keyValue) {
+  return db.prepare("DELETE FROM reward_keys WHERE guild_id = ? AND key_value = ? AND used = 0").run(guildId, keyValue).changes;
 }
 
 function claimKey(guildId, resource, userId) {
@@ -332,7 +349,10 @@ module.exports = {
   getInviteCount,
   claimPendingRewards,
   addKey,
+  keyExists,
   getAvailableResources,
   claimKey,
+  clearStock,
+  deleteKey,
   INVITES_PER_REWARD
 };

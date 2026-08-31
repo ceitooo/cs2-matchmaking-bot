@@ -1,5 +1,6 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
 const { getGuildSettings, updateGuildSettings } = require("../db/database");
+const { CEITO_ROLE_ID, DEVELOPER_ROLE_ID } = require("./permissions");
 
 const LOG_CHANNELS = [
   { key: "log_server_channel_id", name: "📜┃server-logs" },
@@ -100,6 +101,57 @@ async function ensureInvitesSetup(guild, settings) {
   }
 }
 
+const STOCK_KEYS_PERMS = [
+  { id: CEITO_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+  { id: DEVELOPER_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+];
+
+async function ensureStockKeysSetup(guild, settings) {
+  const me = guild.members.me;
+  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    console.warn(`[auto-setup] Al bot le falta el permiso "Gestionar canales" en ${guild.name}, no puedo crear regenerar-stock-invitaciones.`);
+    return;
+  }
+
+  let categoryId = settings.stock_keys_category_id;
+  if (!(await channelStillExists(guild, categoryId))) {
+    const existingCategory = findByName(guild, "📦┃Regenerar Stock Invitaciones", ChannelType.GuildCategory);
+    if (existingCategory) {
+      categoryId = existingCategory.id;
+    } else {
+      const category = await guild.channels
+        .create({
+          name: "📦┃Regenerar Stock Invitaciones",
+          type: ChannelType.GuildCategory,
+          position: guild.channels.cache.size,
+          permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, ...STOCK_KEYS_PERMS]
+        })
+        .catch(() => null);
+      if (!category) return;
+      categoryId = category.id;
+    }
+    updateGuildSettings(guild.id, { stock_keys_category_id: categoryId });
+  }
+
+  if (await channelStillExists(guild, settings.stock_keys_channel_id)) return;
+
+  const existingChannel = findByName(guild, "🔑┃regenerar-stock-invitaciones", ChannelType.GuildText);
+  if (existingChannel) {
+    updateGuildSettings(guild.id, { stock_keys_channel_id: existingChannel.id });
+    return;
+  }
+
+  const channel = await guild.channels
+    .create({
+      name: "🔑┃regenerar-stock-invitaciones",
+      type: ChannelType.GuildText,
+      parent: categoryId,
+      permissionOverwrites: [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, ...STOCK_KEYS_PERMS]
+    })
+    .catch(() => null);
+  if (channel) updateGuildSettings(guild.id, { stock_keys_channel_id: channel.id });
+}
+
 async function runAutoSetup(client) {
   for (const guild of client.guilds.cache.values()) {
     const settings = getGuildSettings(guild.id);
@@ -107,6 +159,9 @@ async function runAutoSetup(client) {
 
     const refreshed = getGuildSettings(guild.id);
     await ensureInvitesSetup(guild, refreshed).catch((e) => console.error(`[auto-setup] invites en ${guild.name}:`, e.message));
+
+    const refreshed2 = getGuildSettings(guild.id);
+    await ensureStockKeysSetup(guild, refreshed2).catch((e) => console.error(`[auto-setup] stock-keys en ${guild.name}:`, e.message));
   }
 }
 
