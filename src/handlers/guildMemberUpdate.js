@@ -1,5 +1,4 @@
 const { getGuildSettings } = require("../db/database");
-const { buildBoostMessage } = require("../utils/boostBuilder");
 
 async function logNicknameChange(oldMember, newMember, settings) {
   if (oldMember.nickname === newMember.nickname) return;
@@ -21,22 +20,8 @@ module.exports = {
   async execute(oldMember, newMember) {
     const settings = getGuildSettings(newMember.guild.id);
 
+    // El anuncio de boost lo maneja messageCreate: ahí borramos el mensaje de
+    // sistema de Discord y lo reemplazamos por el embed con imagen.
     await logNicknameChange(oldMember, newMember, settings);
-
-    const startedBoosting = !oldMember.premiumSince && newMember.premiumSince;
-    if (!startedBoosting) return;
-
-    if (!settings.boost_channel_id) {
-      console.warn(`[boost] ${newMember.user.tag} boosteó pero no hay boost_channel_id configurado en ${newMember.guild.name}.`);
-      return;
-    }
-
-    const channel = await newMember.guild.channels.fetch(settings.boost_channel_id).catch((e) => {
-      console.error(`[boost] No pude fetchear el canal ${settings.boost_channel_id}:`, e.message);
-      return null;
-    });
-    if (!channel) return;
-
-    await channel.send(buildBoostMessage(newMember, newMember.guild, settings)).catch((e) => console.error("[boost] Error mandando el mensaje:", e.message));
   }
 };

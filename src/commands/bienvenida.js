@@ -2,6 +2,7 @@ const { SlashCommandBuilder, ChannelType, EmbedBuilder } = require("discord.js")
 const { getGuildSettings, updateGuildSettings } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 const { buildWelcomeMessage } = require("../utils/welcomeBuilder");
+const { saveMediaAsset, resolveMedia } = require("../utils/mediaStore");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -49,8 +50,20 @@ module.exports = {
         return interaction.reply({ content: "Debes adjuntar un archivo o pasar una URL.", flags: 64 });
       }
 
-      updateGuildSettings(guildId, { welcome_image_url: imageUrl });
-      return interaction.reply({ content: "✅ Imagen/gif de bienvenida actualizada.", flags: 64 });
+      await interaction.deferReply({ flags: 64 });
+
+      // Guardamos una copia local: los links de adjuntos de Discord expiran solos.
+      const stored = await saveMediaAsset(imageUrl, guildId, "welcome").catch((e) => {
+        console.error("[bienvenida] No pude guardar la imagen:", e.message);
+        return null;
+      });
+
+      if (!stored) {
+        return interaction.editReply({ content: "❌ No pude descargar esa imagen. Probá con otro archivo o URL." });
+      }
+
+      updateGuildSettings(guildId, { welcome_image_url: stored });
+      return interaction.editReply({ content: "✅ Imagen/gif de bienvenida actualizada y guardada (ya no se pierde al reiniciar)." });
     }
 
     if (sub === "quitar-imagen") {
@@ -78,13 +91,14 @@ module.exports = {
           { name: "Imagen/gif", value: settings.welcome_image_url ? "Configurada (vista previa abajo)" : "No configurada" },
           { name: "Color", value: settings.welcome_color ?? "Por defecto (`#e91e8c`)" }
         );
-      if (settings.welcome_image_url) embed.setImage(settings.welcome_image_url);
+      const { image, files } = resolveMedia(settings.welcome_image_url);
+      if (image) embed.setImage(image);
 
       if (settings.welcome_channel_id) {
         const preview = buildWelcomeMessage(interaction.member ?? interaction.user, interaction.guild, settings);
-        return interaction.reply({ embeds: [embed], flags: 64 }).then(() => interaction.followUp({ ...preview, flags: 64 }));
+        return interaction.reply({ embeds: [embed], files, flags: 64 }).then(() => interaction.followUp({ ...preview, flags: 64 }));
       }
-      return interaction.reply({ embeds: [embed], flags: 64 });
+      return interaction.reply({ embeds: [embed], files, flags: 64 });
     }
   }
 };

@@ -1,8 +1,12 @@
 const { EmbedBuilder } = require("discord.js");
 const { getGuildSettings, updateGuildSettings, addKey, keyExists, getAfk, clearAfk, listFaqs, incrementAutomodOffense, addWarn, listBlacklistWords } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
+const { buildBoostMessage } = require("../utils/boostBuilder");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
+
+// Tipos de mensaje de sistema que Discord manda al boostear
+const BOOST_MESSAGE_TYPES = [8, 9, 10, 11];
 
 const SPAM_WINDOW_MS = 5000;
 const SPAM_MAX_MESSAGES = 5;
@@ -125,6 +129,21 @@ async function handleBlacklist(message) {
     .catch(() => {});
 }
 
+// Discord manda su propio mensajito de "X acaba de mejorar el servidor". Lo
+// reemplazamos por nuestro embed con imagen en el canal de boosts configurado.
+async function replaceBoostSystemMessage(message, settings) {
+  await message.delete().catch(() => {});
+
+  const member = message.member ?? (await message.guild.members.fetch(message.author.id).catch(() => null));
+  if (!member) return;
+
+  const targetId = settings.boost_channel_id ?? message.channelId;
+  const channel = await message.guild.channels.fetch(targetId).catch(() => null);
+  if (!channel?.isTextBased()) return;
+
+  await channel.send(buildBoostMessage(member, message.guild, settings)).catch((e) => console.error("[boost] Error mandando el embed:", e.message));
+}
+
 async function handleAfk(message) {
   if (message.author.bot) return;
   const guildId = message.guild.id;
@@ -151,6 +170,11 @@ module.exports = {
     if (!message.guild) return;
 
     const settings = getGuildSettings(message.guild.id);
+
+    if (BOOST_MESSAGE_TYPES.includes(message.type)) {
+      return replaceBoostSystemMessage(message, settings);
+    }
+
     await detectAndStoreKeys(message, settings);
     await ensureInviteStickyBottom(message, settings);
     await scrubVerificationChannel(message);

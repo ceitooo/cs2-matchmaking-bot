@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ChannelType, EmbedBuilder } = require("discord.js");
 const { getGuildSettings, updateGuildSettings } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
+const { saveMediaAsset, resolveMedia } = require("../utils/mediaStore");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -48,8 +49,20 @@ module.exports = {
         return interaction.reply({ content: "Debes adjuntar un archivo o pasar una URL.", flags: 64 });
       }
 
-      updateGuildSettings(guildId, { boost_image_url: imageUrl });
-      return interaction.reply({ content: "✅ Imagen/gif de boost actualizada.", flags: 64 });
+      await interaction.deferReply({ flags: 64 });
+
+      // Guardamos una copia local: los links de adjuntos de Discord expiran solos.
+      const stored = await saveMediaAsset(imageUrl, guildId, "boost").catch((e) => {
+        console.error("[boost] No pude guardar la imagen:", e.message);
+        return null;
+      });
+
+      if (!stored) {
+        return interaction.editReply({ content: "❌ No pude descargar esa imagen. Probá con otro archivo o URL." });
+      }
+
+      updateGuildSettings(guildId, { boost_image_url: stored });
+      return interaction.editReply({ content: "✅ Imagen/gif de boost actualizada y guardada (ya no se pierde al reiniciar)." });
     }
 
     if (sub === "quitar-imagen") {
@@ -77,8 +90,9 @@ module.exports = {
           { name: "Imagen/gif", value: settings.boost_image_url ? "Configurada (vista previa abajo)" : "No configurada" },
           { name: "Color", value: settings.boost_color ?? "Por defecto (`#f47fff`)" }
         );
-      if (settings.boost_image_url) embed.setImage(settings.boost_image_url);
-      return interaction.reply({ embeds: [embed], flags: 64 });
+      const { image, files } = resolveMedia(settings.boost_image_url);
+      if (image) embed.setImage(image);
+      return interaction.reply({ embeds: [embed], files, flags: 64 });
     }
   }
 };

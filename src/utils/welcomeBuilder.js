@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
+const { resolveMedia } = require("./mediaStore");
 
 function buildWelcomeMessage(member, guild, settings) {
   const embed = new EmbedBuilder()
@@ -7,11 +8,10 @@ function buildWelcomeMessage(member, guild, settings) {
     .setDescription(`Bienvenido ${member} · Miembros: **${guild.memberCount}**`)
     .setThumbnail(member.displayAvatarURL({ size: 256 }));
 
-  if (settings.welcome_image_url) {
-    embed.setImage(settings.welcome_image_url);
-  }
+  const { image, files } = resolveMedia(settings.welcome_image_url);
+  if (image) embed.setImage(image);
 
-  return { embeds: [embed] };
+  return { embeds: [embed], files };
 }
 
 module.exports = { buildWelcomeMessage };

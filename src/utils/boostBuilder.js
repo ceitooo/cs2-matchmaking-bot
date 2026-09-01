@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
+const { resolveMedia } = require("./mediaStore");
 
 function buildBoostMessage(member, guild, settings) {
   const embed = new EmbedBuilder()
@@ -9,11 +10,10 @@ function buildBoostMessage(member, guild, settings) {
     )
     .setThumbnail(member.displayAvatarURL({ size: 256 }));
 
-  if (settings.boost_image_url) {
-    embed.setImage(settings.boost_image_url);
-  }
+  const { image, files } = resolveMedia(settings.boost_image_url);
+  if (image) embed.setImage(image);
 
-  return { embeds: [embed] };
+  return { embeds: [embed], files };
 }
 
 module.exports = { buildBoostMessage };
