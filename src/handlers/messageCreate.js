@@ -170,15 +170,29 @@ async function handleXp(message) {
 
   const levelRoles = getLevelRoles(message.guild.id);
   const roleForLevel = levelRoles.find((r) => r.level === result.level);
-  if (!roleForLevel) return;
+  if (!roleForLevel) {
+    console.log(`[niveles] ${message.author.tag} llegó a nivel ${result.level}, pero no hay rol configurado para ese nivel (usá /nivelrol asignar).`);
+    return;
+  }
 
   const role = message.guild.roles.cache.get(roleForLevel.role_id);
-  if (!role) return;
+  if (!role) {
+    console.warn(`[niveles] El rol ${roleForLevel.role_id} configurado para nivel ${result.level} ya no existe en el server.`);
+    return;
+  }
 
   const member = message.member ?? (await message.guild.members.fetch(message.author.id).catch(() => null));
-  if (member?.manageable !== false) {
-    await member?.roles.add(role).catch(() => {});
+  if (!member) {
+    console.warn(`[niveles] No pude fetchear al miembro ${message.author.id} para darle el rol de nivel ${result.level}.`);
+    return;
   }
+  if (member.manageable === false) {
+    console.warn(`[niveles] No puedo darle roles a ${message.author.tag}: mi rol está por debajo del suyo en la jerarquía.`);
+    return;
+  }
+
+  await member.roles.add(role).catch((e) => console.error(`[niveles] Error dando el rol de nivel ${result.level}:`, e.message));
+  console.log(`[niveles] ${message.author.tag} recibió el rol ${role.name} por llegar a nivel ${result.level}.`);
 }
 
 async function handleAfk(message) {
