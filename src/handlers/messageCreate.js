@@ -1,5 +1,19 @@
 const { EmbedBuilder } = require("discord.js");
-const { getGuildSettings, updateGuildSettings, addKey, keyExists, getAfk, clearAfk, listFaqs, incrementAutomodOffense, addWarn, listBlacklistWords } = require("../db/database");
+const {
+  getGuildSettings,
+  updateGuildSettings,
+  addKey,
+  keyExists,
+  getAfk,
+  clearAfk,
+  listFaqs,
+  incrementAutomodOffense,
+  addWarn,
+  listBlacklistWords,
+  canGainXp,
+  addXp,
+  getLevelRoles
+} = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 const { buildBoostMessage } = require("../utils/boostBuilder");
 
@@ -144,6 +158,29 @@ async function replaceBoostSystemMessage(message, settings) {
   await channel.send(buildBoostMessage(member, message.guild, settings)).catch((e) => console.error("[boost] Error mandando el embed:", e.message));
 }
 
+async function handleXp(message) {
+  if (message.author.bot) return;
+  if (!canGainXp(message.guild.id, message.author.id)) return;
+
+  const amount = 15 + Math.floor(Math.random() * 11); // 15-25
+  const result = addXp(message.guild.id, message.author.id, amount);
+  if (!result.leveledUp) return;
+
+  await message.channel.send(`🎉 ${message.author} subió a **nivel ${result.level}**!`).catch(() => {});
+
+  const levelRoles = getLevelRoles(message.guild.id);
+  const roleForLevel = levelRoles.find((r) => r.level === result.level);
+  if (!roleForLevel) return;
+
+  const role = message.guild.roles.cache.get(roleForLevel.role_id);
+  if (!role) return;
+
+  const member = message.member ?? (await message.guild.members.fetch(message.author.id).catch(() => null));
+  if (member?.manageable !== false) {
+    await member?.roles.add(role).catch(() => {});
+  }
+}
+
 async function handleAfk(message) {
   if (message.author.bot) return;
   const guildId = message.guild.id;
@@ -181,6 +218,7 @@ module.exports = {
     await handleGreeting(message);
     await handleFaq(message);
     await handleBlacklist(message);
+    await handleXp(message);
     await handleAfk(message);
 
     if (message.author.bot) return;

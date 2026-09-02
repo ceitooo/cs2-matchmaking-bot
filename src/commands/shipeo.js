@@ -1,18 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-
-function compatibilidad(idA, idB) {
-  const combined = [idA, idB].sort().join("");
-  let hash = 0;
-  for (let i = 0; i < combined.length; i++) {
-    hash = (hash * 31 + combined.charCodeAt(i)) % 100000;
-  }
-  return hash % 101;
-}
-
-function barra(porcentaje) {
-  const llenos = Math.round(porcentaje / 10);
-  return "💖".repeat(llenos) + "🤍".repeat(10 - llenos);
-}
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const { buildShipImage } = require("../utils/shipBuilder");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -25,13 +12,24 @@ module.exports = {
     const a = interaction.options.getUser("usuario1");
     const b = interaction.options.getUser("usuario2") ?? interaction.user;
 
-    const porcentaje = compatibilidad(a.id, b.id);
+    await interaction.deferReply();
 
-    const embed = new EmbedBuilder()
-      .setTitle("💘 Shipeo")
-      .setColor(0xff69b4)
-      .setDescription(`${a} 💞 ${b}\n\n**${porcentaje}%** compatibles\n${barra(porcentaje)}`);
+    try {
+      const avatarA = a.displayAvatarURL({ extension: "png", size: 256 });
+      const avatarB = b.displayAvatarURL({ extension: "png", size: 256 });
+      const { buffer, porcentaje } = await buildShipImage(avatarA, avatarB, a.id, b.id);
 
-    return interaction.reply({ embeds: [embed] });
+      const attachment = new AttachmentBuilder(buffer, { name: "shipeo.png" });
+      const embed = new EmbedBuilder()
+        .setTitle("💘 Shipeo")
+        .setColor(0xff69b4)
+        .setDescription(`${a} 💞 ${b}\n\n**${porcentaje}%** compatibles`)
+        .setImage("attachment://shipeo.png");
+
+      await interaction.editReply({ embeds: [embed], files: [attachment] });
+    } catch (error) {
+      console.error("[shipeo] Error:", error);
+      await interaction.editReply({ content: "❌ No pude generar el shipeo, intenta de nuevo." });
+    }
   }
 };

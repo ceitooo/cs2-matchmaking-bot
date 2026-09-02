@@ -212,6 +212,22 @@ CREATE TABLE IF NOT EXISTS blacklist_words (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS levels (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  xp INTEGER NOT NULL DEFAULT 0,
+  level INTEGER NOT NULL DEFAULT 0,
+  last_message_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS level_roles (
+  guild_id TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  role_id TEXT NOT NULL,
+  PRIMARY KEY (guild_id, level)
+);
+
 CREATE TABLE IF NOT EXISTS reward_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -531,6 +547,68 @@ function deleteBlacklistWord(guildId, id) {
   return db.prepare("DELETE FROM blacklist_words WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
 }
 
+const XP_COOLDOWN_MS = 60 * 1000;
+
+function xpThreshold(level) {
+  return 5 * level * level + 50 * level + 100;
+}
+
+function getLevel(guildId, userId) {
+  return db.prepare("SELECT * FROM levels WHERE guild_id = ? AND user_id = ?").get(guildId, userId) ?? { xp: 0, level: 0, last_message_at: 0 };
+}
+
+function addXp(guildId, userId, amount) {
+  const current = getLevel(guildId, userId);
+
+  let xp = current.xp + amount;
+  let level = current.level;
+  let leveledUp = false;
+
+  while (xp >= xpThreshold(level)) {
+    xp -= xpThreshold(level);
+    level++;
+    leveledUp = true;
+  }
+
+  const now = Date.now();
+  db.prepare(
+    `INSERT INTO levels (guild_id, user_id, xp, level, last_message_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(guild_id, user_id) DO UPDATE SET xp = ?, level = ?, last_message_at = ?`
+  ).run(guildId, userId, xp, level, now, xp, level, now);
+
+  return { xp, level, leveledUp, threshold: xpThreshold(level) };
+}
+
+function canGainXp(guildId, userId) {
+  const current = getLevel(guildId, userId);
+  return Date.now() - current.last_message_at >= XP_COOLDOWN_MS;
+}
+
+function getRank(guildId, userId) {
+  const me = getLevel(guildId, userId);
+  const row = db
+    .prepare("SELECT COUNT(*) as c FROM levels WHERE guild_id = ? AND (level > ? OR (level = ? AND xp > ?))")
+    .get(guildId, me.level, me.level, me.xp);
+  return row.c + 1;
+}
+
+function setLevelRole(guildId, level, roleId) {
+  db.prepare("INSERT INTO level_roles (guild_id, level, role_id) VALUES (?, ?, ?) ON CONFLICT(guild_id, level) DO UPDATE SET role_id = ?").run(
+    guildId,
+    level,
+    roleId,
+    roleId
+  );
+}
+
+function getLevelRoles(guildId) {
+  return db.prepare("SELECT * FROM level_roles WHERE guild_id = ? ORDER BY level ASC").all(guildId);
+}
+
+function deleteLevelRole(guildId, level) {
+  return db.prepare("DELETE FROM level_roles WHERE guild_id = ? AND level = ?").run(guildId, level).changes;
+}
+
 function claimKey(guildId, resource, userId) {
   const key = db.prepare("SELECT * FROM reward_keys WHERE guild_id = ? AND resource = ? AND used = 0 ORDER BY id ASC LIMIT 1").get(guildId, resource);
   if (!key) return null;
@@ -573,6 +651,14 @@ module.exports = {
   listFaqs,
   deleteFaq,
   incrementAutomodOffense,
+  getLevel,
+  addXp,
+  canGainXp,
+  getRank,
+  setLevelRole,
+  getLevelRoles,
+  deleteLevelRole,
+  xpThreshold,
   addBlacklistWord,
   listBlacklistWords,
   deleteBlacklistWord,
