@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ChannelType, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require("discord.js");
 const { isStaffOrCeito } = require("../utils/permissions");
 
 function parseColor(hex) {
@@ -35,6 +35,13 @@ module.exports = {
         .addStringOption((o) => o.setName("descripcion").setDescription("Nueva descripción (opcional)").setRequired(false))
         .addStringOption((o) => o.setName("color").setDescription("Nuevo color hex (opcional)").setRequired(false))
         .addStringOption((o) => o.setName("imagen_url").setDescription("Nueva imagen URL (opcional)").setRequired(false))
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("colorbtn")
+        .setDescription("Agrega un botón de cambiar color a un embed ya publicado")
+        .addStringOption((o) => o.setName("mensaje_id").setDescription("ID del mensaje").setRequired(true))
+        .addChannelOption((o) => o.setName("canal").setDescription("Canal donde está el mensaje").addChannelTypes(ChannelType.GuildText).setRequired(true))
     ),
 
   async execute(interaction) {
@@ -64,6 +71,9 @@ module.exports = {
       if (!sent) {
         return interaction.reply({ content: `❌ No pude publicar en ${canal}. Revisá mis permisos ahí.`, flags: 64 });
       }
+
+      const button = new ButtonBuilder().setCustomId(`embed_color:${sent.id}`).setLabel("🎨 Cambiar color").setStyle(ButtonStyle.Secondary);
+      await sent.edit({ components: [new ActionRowBuilder().addComponents(button)] }).catch(() => {});
 
       return interaction.reply({ content: `✅ Embed publicado en ${canal} (ID: \`${sent.id}\`, guardalo si después querés editarlo).`, flags: 64 });
     }
@@ -96,6 +106,27 @@ module.exports = {
 
       await mensaje.edit({ embeds: [nuevoEmbed] }).catch(() => null);
       return interaction.reply({ content: "✅ Embed editado.", flags: 64 });
+    }
+
+    if (sub === "colorbtn") {
+      const messageId = interaction.options.getString("mensaje_id");
+      const canal = interaction.options.getChannel("canal");
+
+      const mensaje = await canal.messages.fetch(messageId).catch(() => null);
+      if (!mensaje) {
+        return interaction.reply({ content: "❌ No encontré ese mensaje en ese canal.", flags: 64 });
+      }
+      if (mensaje.author.id !== interaction.client.user.id) {
+        return interaction.reply({ content: "❌ Ese mensaje no lo mandé yo, no lo puedo editar.", flags: 64 });
+      }
+      if (mensaje.embeds.length === 0) {
+        return interaction.reply({ content: "❌ Ese mensaje no tiene ningún embed.", flags: 64 });
+      }
+
+      const button = new ButtonBuilder().setCustomId(`embed_color:${mensaje.id}`).setLabel("🎨 Cambiar color").setStyle(ButtonStyle.Secondary);
+      await mensaje.edit({ components: [new ActionRowBuilder().addComponents(button)] }).catch(() => null);
+
+      return interaction.reply({ content: "✅ Botón de color agregado.", flags: 64 });
     }
   }
 };

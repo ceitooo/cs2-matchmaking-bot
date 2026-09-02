@@ -40,7 +40,10 @@ function resolveMedia(value) {
 
   const name = path.basename(value);
   const filePath = path.join(assetsDir, name);
-  if (!fs.existsSync(filePath)) return { image: null, files: [] };
+  if (!fs.existsSync(filePath)) {
+    console.warn(`[mediaStore] Falta el archivo local ${filePath} — la imagen no va a aparecer hasta reconfigurarla.`);
+    return { image: null, files: [] };
+  }
 
   return { image: `attachment://${name}`, files: [{ attachment: filePath, name }] };
 }

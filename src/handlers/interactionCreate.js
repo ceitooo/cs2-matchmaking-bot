@@ -233,6 +233,49 @@ module.exports = {
       });
     }
 
+    if (interaction.isButton() && interaction.customId.startsWith("embed_color:")) {
+      if (!isStaffOrCeito(interaction)) {
+        return interaction.reply({ content: "Solo el staff o ceito pueden cambiar el color.", flags: 64 });
+      }
+
+      const [, messageId] = interaction.customId.split(":");
+      const modal = new ModalBuilder()
+        .setCustomId(`embed_color_modal:${messageId}`)
+        .setTitle("Cambiar color del embed")
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("hex")
+              .setLabel("Color hex (ej: #e60000)")
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder("#e60000")
+              .setRequired(true)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith("embed_color_modal:")) {
+      const [, messageId] = interaction.customId.split(":");
+      const hexInput = interaction.fields.getTextInputValue("hex").trim();
+      const normalized = hexInput.startsWith("#") ? hexInput.slice(1) : hexInput;
+
+      if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+        return interaction.reply({ content: "❌ Ese no es un color hex válido. Ejemplo: `#e60000`.", flags: 64 });
+      }
+
+      const mensaje = await interaction.channel.messages.fetch(messageId).catch(() => null);
+      if (!mensaje || mensaje.embeds.length === 0) {
+        return interaction.reply({ content: "❌ No encontré el embed original.", flags: 64 });
+      }
+
+      const nuevoEmbed = EmbedBuilder.from(mensaje.embeds[0]).setColor(parseInt(normalized, 16));
+      await mensaje.edit({ embeds: [nuevoEmbed] }).catch(() => null);
+
+      return interaction.reply({ content: `✅ Color actualizado a \`#${normalized}\`.`, flags: 64 });
+    }
+
     if (interaction.isButton() && interaction.customId === "test_key_dm") {
       const dmSent = await interaction.user
         .send({
