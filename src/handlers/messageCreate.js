@@ -160,6 +160,7 @@ async function replaceBoostSystemMessage(message, settings) {
 
 async function handleXp(message) {
   if (message.author.bot) return;
+  if (isTicketChannel(message.channel)) return;
   if (!canGainXp(message.guild.id, message.author.id)) return;
 
   const amount = 15 + Math.floor(Math.random() * 11); // 15-25

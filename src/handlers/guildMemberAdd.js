@@ -67,14 +67,23 @@ module.exports = {
   async execute(member) {
     const settings = getGuildSettings(member.guild.id);
 
-    await logServerEvent(member, settings, `📥 **Miembro se unió:** ${member.user.tag} (${member.id})`);
-    await trackInvite(member, settings);
+    await logServerEvent(member, settings, `📥 **Miembro se unió:** ${member.user.tag} (${member.id})`).catch((e) =>
+      console.error("[bienvenida] Error en logServerEvent:", e.message)
+    );
 
-    if (!settings.welcome_channel_id) return;
+    await trackInvite(member, settings).catch((e) => console.error("[bienvenida] Error en trackInvite:", e.message));
 
-    const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
+    if (!settings.welcome_channel_id) {
+      console.warn(`[bienvenida] ${member.user.tag} se unió pero no hay welcome_channel_id configurado.`);
+      return;
+    }
+
+    const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch((e) => {
+      console.error(`[bienvenida] No pude fetchear el canal ${settings.welcome_channel_id}:`, e.message);
+      return null;
+    });
     if (!channel) return;
 
-    await channel.send(buildWelcomeMessage(member, member.guild, settings)).catch(() => {});
+    await channel.send(buildWelcomeMessage(member, member.guild, settings)).catch((e) => console.error("[bienvenida] Error mandando el mensaje:", e.message));
   }
 };
