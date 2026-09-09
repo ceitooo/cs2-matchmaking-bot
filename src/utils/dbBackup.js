@@ -1,5 +1,5 @@
 const { AttachmentBuilder } = require("discord.js");
-const { getGuildSettings, dbPath } = require("../db/database");
+const { getGuildSettings, dbPath, db } = require("../db/database");
 
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // cada 24 horas
 
@@ -9,6 +9,10 @@ async function backupGuild(guild) {
 
   const channel = await guild.channels.fetch(settings.backups_channel_id).catch(() => null);
   if (!channel?.isTextBased()) return;
+
+  // La base usa modo WAL: los cambios recientes viven en un archivo -wal aparte
+  // y el .db principal puede estar casi vacío hasta que se hace este checkpoint.
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
 
   const attachment = new AttachmentBuilder(dbPath, { name: `matchmaking-${new Date().toISOString().slice(0, 10)}.db` });
   await channel.send({ content: `🗄️ Backup automático de la base de datos.`, files: [attachment] }).catch((e) => console.error("[backup] Error:", e.message));
