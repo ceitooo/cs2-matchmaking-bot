@@ -2,7 +2,7 @@ const express = require("express");
 const { db, getOrCreatePlayer } = require("../db/database");
 const { completeVerification } = require("./verifyActions");
 
-const PORT = process.env.STEAM_AUTH_PORT || 3000;
+const PORT = process.env.SERVER_PORT || process.env.STEAM_AUTH_PORT || 3000;
 const BASE_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const CLIENT_ID = process.env.CLIENT_ID;
 
