@@ -82,7 +82,7 @@ module.exports = {
       }
 
       if (!isMemberAuthorizedInSpecialGuild(interaction)) {
-        return interaction.reply({ content: "❌ No tienes un rol autorizado para usar comandos en este servidor.", flags: 64 });
+        return interaction.reply({ content: "❌ No puedes usar comandos en este canal porque es de solo lectura (no tienes permiso para escribir aquí).", flags: 64 });
       }
 
       const command = interaction.client.commands.get(interaction.commandName);

@@ -21,6 +21,14 @@ const CS2_MATCHMAKING_COMMANDS = new Set([
   "resultado"
 ]);
 
+// Comprueba si el usuario puede escribir/enviar mensajes en el canal actual
+function canWriteInChannel(interaction) {
+  if (!interaction.channel || !interaction.member) return true;
+  const perms = interaction.channel.permissionsFor(interaction.member);
+  if (!perms) return true;
+  return perms.has(PermissionFlagsBits.SendMessages);
+}
+
 // Rol más alto o Ceito/Developer (para comandos peligrosos como antiraid, purga, etc.)
 function isHighestRoleOrCeito(interaction) {
   if (interaction.guildId === SPECIAL_GUILD_ID) {
@@ -52,16 +60,11 @@ function isCs2CommandBlockedInGuild(guildId, commandName) {
   return guildId === SPECIAL_GUILD_ID && CS2_MATCHMAKING_COMMANDS.has(commandName);
 }
 
-// Verifica si el usuario en el servidor especial tiene alguno de los roles autorizados (Más alto, Staff o Miembros)
+// Comprobación de autorización general en servidor especial:
+// Permite comandos generales (como /help) en cualquier canal donde el usuario pueda ESCRIBIR.
 function isMemberAuthorizedInSpecialGuild(interaction) {
-  if (interaction.guildId !== SPECIAL_GUILD_ID) return true;
-  const roles = interaction.member?.roles?.cache;
-  if (!roles) return false;
-  return (
-    roles.has(HIGHEST_ADMIN_ROLE_ID) ||
-    roles.has(STAFF_ROLE_ID) ||
-    roles.has(MEMBER_ROLE_ID)
-  );
+  if (!canWriteInChannel(interaction)) return false;
+  return true;
 }
 
 module.exports = {
@@ -70,6 +73,7 @@ module.exports = {
   isHighestRoleOrCeito,
   isCs2CommandBlockedInGuild,
   isMemberAuthorizedInSpecialGuild,
+  canWriteInChannel,
   CEITO_ROLE_ID,
   DEVELOPER_ROLE_ID,
   SPECIAL_GUILD_ID,
