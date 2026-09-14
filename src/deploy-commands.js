@@ -16,10 +16,7 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
   try {
     console.log(`Registrando ${commands.length} comandos...`);
 
-    const route = process.env.GUILD_ID
-      ? Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID)
-      : Routes.applicationCommands(process.env.CLIENT_ID);
-
+    const route = Routes.applicationCommands(process.env.CLIENT_ID);
     await rest.put(route, { body: commands });
 
     console.log("Comandos registrados correctamente.");
