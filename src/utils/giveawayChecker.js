@@ -1,7 +1,6 @@
-const { EmbedBuilder } = require("discord.js");
-const { getActiveGiveawaysDue, endGiveawayDb } = require("../db/database");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { getActiveGiveawaysDue, endGiveawayDb, getGiveawayEntries } = require("../db/database");
 
-const GIVEAWAY_EMOJI = "🎉";
 const CHECK_INTERVAL_MS = 30 * 1000;
 
 function pickWinners(userIds, count) {
@@ -14,6 +13,15 @@ function pickWinners(userIds, count) {
   return winners;
 }
 
+function buildEndedRows(giveawayId) {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`giveaway_enter:${giveawayId}`).setLabel("🎉 Sorteo terminado").setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId(`giveaway_reroll:${giveawayId}`).setLabel("🎲 Reroll").setStyle(ButtonStyle.Danger)
+    )
+  ];
+}
+
 async function finishGiveaway(client, giveaway) {
   const channel = await client.channels.fetch(giveaway.channel_id).catch(() => null);
   if (!channel?.isTextBased()) return;
@@ -21,13 +29,19 @@ async function finishGiveaway(client, giveaway) {
   const message = await channel.messages.fetch(giveaway.message_id).catch(() => null);
   if (!message) return;
 
-  const reaction = message.reactions.cache.get(GIVEAWAY_EMOJI);
-  const users = reaction ? await reaction.users.fetch().catch(() => null) : null;
-  const participantIds = users ? [...users.values()].filter((u) => !u.bot).map((u) => u.id) : [];
-
+  const participantIds = getGiveawayEntries(giveaway.id);
   const winners = pickWinners(participantIds, giveaway.winners_count);
 
-  const embed = new EmbedBuilder()
+  const oldEmbed = message.embeds[0];
+  const newEmbed = oldEmbed
+    ? EmbedBuilder.from(oldEmbed).setColor(0x808080).setFields(
+        oldEmbed.fields.map((f) => (f.name === "Termina" ? { name: "Terminó", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: f.inline } : f))
+      )
+    : new EmbedBuilder().setTitle(`🎉 Sorteo · ${giveaway.prize}`);
+
+  await message.edit({ embeds: [newEmbed], components: buildEndedRows(giveaway.id) }).catch(() => {});
+
+  const resultEmbed = new EmbedBuilder()
     .setTitle("🎉 ¡Sorteo terminado!")
     .setColor(0xf1c40f)
     .setDescription(
@@ -36,7 +50,7 @@ async function finishGiveaway(client, giveaway) {
         : `Premio: **${giveaway.prize}**\nNadie participó, sin ganadores.`
     );
 
-  await channel.send({ embeds: [embed] }).catch(() => {});
+  await channel.send({ embeds: [resultEmbed] }).catch(() => {});
 }
 
 async function checkGiveaways(client) {
@@ -54,4 +68,4 @@ function startGiveawayChecker(client) {
   }, CHECK_INTERVAL_MS);
 }
 
-module.exports = { startGiveawayChecker, finishGiveaway };
+module.exports = { startGiveawayChecker, finishGiveaway, pickWinners, buildEndedRows };

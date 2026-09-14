@@ -228,6 +228,12 @@ CREATE TABLE IF NOT EXISTS level_roles (
   PRIMARY KEY (guild_id, level)
 );
 
+CREATE TABLE IF NOT EXISTS giveaway_entries (
+  giveaway_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
+  PRIMARY KEY (giveaway_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS reward_keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -485,8 +491,34 @@ function getGiveaway(guildId, id) {
   return db.prepare("SELECT * FROM giveaways WHERE guild_id = ? AND id = ?").get(guildId, id);
 }
 
+function getGiveawayById(id) {
+  return db.prepare("SELECT * FROM giveaways WHERE id = ?").get(id);
+}
+
+function getGiveawayByMessageId(messageId) {
+  return db.prepare("SELECT * FROM giveaways WHERE message_id = ?").get(messageId);
+}
+
 function endGiveawayDb(id) {
   db.prepare("UPDATE giveaways SET ended = 1 WHERE id = ?").run(id);
+}
+
+function toggleGiveawayEntry(giveawayId, userId) {
+  const existing = db.prepare("SELECT 1 FROM giveaway_entries WHERE giveaway_id = ? AND user_id = ?").get(giveawayId, userId);
+  if (existing) {
+    db.prepare("DELETE FROM giveaway_entries WHERE giveaway_id = ? AND user_id = ?").run(giveawayId, userId);
+    return { joined: false };
+  }
+  db.prepare("INSERT INTO giveaway_entries (giveaway_id, user_id) VALUES (?, ?)").run(giveawayId, userId);
+  return { joined: true };
+}
+
+function countGiveawayEntries(giveawayId) {
+  return db.prepare("SELECT COUNT(*) as c FROM giveaway_entries WHERE giveaway_id = ?").get(giveawayId).c;
+}
+
+function getGiveawayEntries(giveawayId) {
+  return db.prepare("SELECT user_id FROM giveaway_entries WHERE giveaway_id = ?").all(giveawayId).map((r) => r.user_id);
 }
 
 function addFaq(guildId, keyword, respuesta, createdBy) {
@@ -628,7 +660,12 @@ module.exports = {
   addGiveaway,
   getActiveGiveawaysDue,
   getGiveaway,
+  getGiveawayById,
+  getGiveawayByMessageId,
   endGiveawayDb,
+  toggleGiveawayEntry,
+  countGiveawayEntries,
+  getGiveawayEntries,
   getOrCreatePlayer,
   getGuildSettings,
   updateGuildSettings,

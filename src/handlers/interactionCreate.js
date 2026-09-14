@@ -1,11 +1,23 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
-const { db, getOrCreatePlayer, claimKey, getGuildSettings, getAvailableResources, addSubscription } = require("../db/database");
+const {
+  db,
+  getOrCreatePlayer,
+  claimKey,
+  getGuildSettings,
+  getAvailableResources,
+  addSubscription,
+  toggleGiveawayEntry,
+  countGiveawayEntries,
+  getGiveawayById,
+  getGiveawayEntries
+} = require("../db/database");
 const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 const { getProducts } = require("../utils/shopBuilder");
 const { createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
 const { isStaffOrCeito } = require("../utils/permissions");
+const { pickWinners } = require("../utils/giveawayChecker");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
 const LOW_STOCK_THRESHOLD = 2;
@@ -274,6 +286,51 @@ module.exports = {
       await mensaje.edit({ embeds: [nuevoEmbed] }).catch(() => null);
 
       return interaction.reply({ content: `✅ Color actualizado a \`#${normalized}\`.`, flags: 64 });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("giveaway_enter:")) {
+      const [, giveawayIdRaw] = interaction.customId.split(":");
+      const giveawayId = Number(giveawayIdRaw);
+      const giveaway = getGiveawayById(giveawayId);
+
+      if (!giveaway || giveaway.ended) {
+        return interaction.reply({ content: "❌ Este sorteo ya terminó.", flags: 64 });
+      }
+
+      const { joined } = toggleGiveawayEntry(giveawayId, interaction.user.id);
+      const entries = countGiveawayEntries(giveawayId);
+
+      const oldEmbed = interaction.message.embeds[0];
+      const newEmbed = EmbedBuilder.from(oldEmbed).setFields(
+        oldEmbed.fields.map((f) => (f.name === "Participantes" ? { name: "Participantes", value: `${entries}`, inline: f.inline } : f))
+      );
+      await interaction.update({ embeds: [newEmbed] }).catch(() => {});
+
+      return interaction.followUp({ content: joined ? "🎉 ¡Entraste al sorteo!" : "Saliste del sorteo.", flags: 64 });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("giveaway_reroll:")) {
+      if (!isStaffOrCeito(interaction)) {
+        return interaction.reply({ content: "Solo el staff o ceito pueden rerollear.", flags: 64 });
+      }
+
+      const [, giveawayIdRaw] = interaction.customId.split(":");
+      const giveawayId = Number(giveawayIdRaw);
+      const giveaway = getGiveawayById(giveawayId);
+      if (!giveaway) {
+        return interaction.reply({ content: "❌ No encontré ese sorteo.", flags: 64 });
+      }
+
+      const entries = getGiveawayEntries(giveawayId);
+      const winners = pickWinners(entries, giveaway.winners_count);
+
+      await interaction.reply({
+        content:
+          winners.length > 0
+            ? `🎲 **Reroll** — nuevo${winners.length === 1 ? "" : "s"} ganador${winners.length === 1 ? "" : "es"} de **${giveaway.prize}**: ${winners.map((id) => `<@${id}>`).join(", ")}`
+            : `🎲 No hay participantes para rerollear **${giveaway.prize}**.`
+      });
+      return;
     }
 
     if (interaction.isButton() && interaction.customId === "test_key_dm") {

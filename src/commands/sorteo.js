@@ -1,14 +1,32 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { addGiveaway, getGiveaway, endGiveawayDb } = require("../db/database");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { addGiveaway, getGiveaway, endGiveawayDb, countGiveawayEntries } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
-const { finishGiveaway } = require("../utils/giveawayChecker");
+const { finishGiveaway, buildEndedRows } = require("../utils/giveawayChecker");
 
-const GIVEAWAY_EMOJI = "🎉";
+function buildGiveawayEmbed({ prize, winnersCount, entries, hostId, endsAt, giveawayId }) {
+  return new EmbedBuilder()
+    .setTitle(`🎉 Sorteo · ${prize}`)
+    .setColor(0xf1c40f)
+    .addFields(
+      { name: "Premio", value: `**${prize}**`, inline: false },
+      { name: "Ganadores", value: `${winnersCount}`, inline: true },
+      { name: "Participantes", value: `${entries}`, inline: true },
+      { name: "Organiza", value: `<@${hostId}>`, inline: true },
+      { name: "Termina", value: `<t:${Math.floor(endsAt / 1000)}:R> · <t:${Math.floor(endsAt / 1000)}:F>`, inline: false }
+    )
+    .setFooter({ text: `ID del sorteo: ${giveawayId ?? "?"}` });
+}
+
+function buildActiveRow(giveawayId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`giveaway_enter:${giveawayId}`).setLabel("Participar").setEmoji("🎉").setStyle(ButtonStyle.Success)
+  );
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("sorteo")
-    .setDescription("Sorteos con reacción (solo staff o ceito)")
+    .setDescription("Sorteos con botón de participar (solo staff o ceito)")
     .addSubcommand((sub) =>
       sub
         .setName("iniciar")
@@ -45,17 +63,15 @@ module.exports = {
       const minutosEquivalentes = unidad === "dias" ? cantidad * 24 * 60 : unidad === "horas" ? cantidad * 60 : cantidad;
       const endsAt = Date.now() + minutosEquivalentes * MINUTE_MS;
 
-      const embed = new EmbedBuilder()
-        .setTitle("🎉 ¡Sorteo!")
-        .setColor(0xf1c40f)
-        .setDescription(`Premio: **${prize}**\nGanadores: **${ganadores}**\nTermina: <t:${Math.floor(endsAt / 1000)}:R>\n\nReaccioná con ${GIVEAWAY_EMOJI} para participar.`)
-        .setFooter({ text: `Organizado por ${interaction.user.username}` });
+      const placeholderEmbed = buildGiveawayEmbed({ prize, winnersCount: ganadores, entries: 0, hostId: interaction.user.id, endsAt, giveawayId: null });
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [placeholderEmbed] });
       const message = await interaction.fetchReply();
-      await message.react(GIVEAWAY_EMOJI).catch(() => {});
 
-      addGiveaway(interaction.guild.id, interaction.channelId, message.id, prize, ganadores, endsAt, interaction.user.id);
+      const created = addGiveaway(interaction.guild.id, interaction.channelId, message.id, prize, ganadores, endsAt, interaction.user.id);
+
+      const finalEmbed = buildGiveawayEmbed({ prize, winnersCount: ganadores, entries: 0, hostId: interaction.user.id, endsAt, giveawayId: created.id });
+      await message.edit({ embeds: [finalEmbed], components: [buildActiveRow(created.id)] }).catch(() => {});
       return;
     }
 
@@ -73,3 +89,6 @@ module.exports = {
     }
   }
 };
+
+module.exports.buildGiveawayEmbed = buildGiveawayEmbed;
+module.exports.buildActiveRow = buildActiveRow;

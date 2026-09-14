@@ -13,7 +13,7 @@ module.exports = {
     console.log(`Bot conectado como ${client.user.tag}`);
 
     client.user.setPresence({
-      activities: [{ name: "CeitoTweaks", type: ActivityType.Competing }],
+      activities: [{ name: "custom", type: ActivityType.Custom, state: "download ceitotweaks" }],
       status: "online"
     });
 
