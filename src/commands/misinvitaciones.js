@@ -19,7 +19,7 @@ module.exports = {
         { name: "Premios reclamados", value: `${rewardProgress}`, inline: true },
         { name: "Te faltan para el próximo", value: `${uses % INVITES_PER_REWARD === 0 ? INVITES_PER_REWARD : faltan}`, inline: true }
       )
-      .setFooter({ text: `Cada ${INVITES_PER_REWARD} invitaciones = 1 día del producto en stock` });
+      .setFooter({ text: `Cada ${INVITES_PER_REWARD} invitaciones = 7 días del producto en stock` });
 
     return interaction.reply({ embeds: [embed], flags: 64 });
   }

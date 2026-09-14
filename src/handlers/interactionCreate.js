@@ -173,7 +173,7 @@ module.exports = {
         return interaction.reply({ content: `❌ Se quedó sin stock justo ahora. Avisale a un admin para que cargue más de **${resource}**.`, flags: 64 });
       }
 
-      await interaction.reply({ content: `🔑 Acá tenés tu key de **${resource}** (1 día):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
+      await interaction.reply({ content: `🔑 Acá tenés tu key de **${resource}** (7 días):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
       await warnIfLowStock(interaction.client, guildId, resource);
       return;
     }
@@ -340,11 +340,11 @@ module.exports = {
             new EmbedBuilder()
               .setTitle("🎉 ¡Felicidades, conseguiste 5 invitaciones!")
               .setColor(0x2ecc71)
-              .setDescription("Elegí 1 día de uno de los siguientes recursos y te mando la key acá mismo:")
+              .setDescription("Elegí 7 días de uno de los siguientes recursos y te mando la key acá mismo:")
           ]
         })
         .then(() =>
-          interaction.user.send({ content: "🔑 Acá tenés tu key de **Ceitus** (1 día):\n```CEITUS-TEST-TEST-TEST-TEST```\n⚠️ Esta es una key de prueba, no funciona de verdad." })
+          interaction.user.send({ content: "🔑 Acá tenés tu key de **Ceitus** (7 días):\n```CEITUS-TEST-TEST-TEST-TEST```\n⚠️ Esta es una key de prueba, no funciona de verdad." })
         )
         .catch(() => null);
 

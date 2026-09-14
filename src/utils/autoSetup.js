@@ -110,7 +110,7 @@ async function ensureInviteStickyExists(guild, settings) {
   const embed = new EmbedBuilder()
     .setTitle("📨 Recompensas por invitar")
     .setColor(0x5865f2)
-    .setDescription("Por cada **5 invitaciones** válidas conseguís **1 día** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
+    .setDescription("Por cada **5 invitaciones** válidas conseguís **7 días** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
 
   const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
   if (sticky) updateGuildSettings(guild.id, { invites_sticky_message_id: sticky.id });
