@@ -16,7 +16,7 @@ const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearL
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 const { getProducts } = require("../utils/shopBuilder");
 const { createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
-const { isStaffOrCeito } = require("../utils/permissions");
+const { isStaffOrCeito, isCs2CommandBlockedInGuild, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
 const { pickWinners } = require("../utils/giveawayChecker");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
@@ -77,6 +77,14 @@ module.exports = {
     }
 
     if (interaction.isChatInputCommand()) {
+      if (isCs2CommandBlockedInGuild(interaction.guildId, interaction.commandName)) {
+        return interaction.reply({ content: "❌ Los comandos de Counter-Strike y Matchmaking están desactivados en este servidor.", flags: 64 });
+      }
+
+      if (!isMemberAuthorizedInSpecialGuild(interaction)) {
+        return interaction.reply({ content: "❌ No tienes un rol autorizado para usar comandos en este servidor.", flags: 64 });
+      }
+
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command) return;
       try {

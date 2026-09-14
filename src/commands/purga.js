@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { isStaffOrCeito } = require("../utils/permissions");
+const { isHighestRoleOrCeito } = require("../utils/permissions");
 
 const MAX_MESSAGES = 200;
 const SCAN_CAP = 500;
@@ -7,7 +7,7 @@ const SCAN_CAP = 500;
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("purga")
-    .setDescription("Borra mensajes recientes del canal (solo staff o ceito)")
+    .setDescription("Borra mensajes recientes del canal (solo rol más alto o ceito)")
     .addIntegerOption((opt) =>
       opt.setName("cantidad").setDescription(`Cantidad de mensajes a borrar (máximo ${MAX_MESSAGES})`).setRequired(true).setMinValue(1).setMaxValue(MAX_MESSAGES)
     )
@@ -15,8 +15,8 @@ module.exports = {
     .addStringOption((opt) => opt.setName("contiene").setDescription("Solo borrar mensajes que contengan este texto").setRequired(false)),
 
   async execute(interaction) {
-    if (!isStaffOrCeito(interaction)) {
-      return interaction.reply({ content: "Solo el staff o ceito pueden usar este comando.", flags: 64 });
+    if (!isHighestRoleOrCeito(interaction)) {
+      return interaction.reply({ content: "❌ Solo el rol más alto (o administrador principal) puede usar este comando.", flags: 64 });
     }
 
     const cantidad = interaction.options.getInteger("cantidad", true);
