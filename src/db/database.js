@@ -245,6 +245,21 @@ CREATE TABLE IF NOT EXISTS reward_keys (
   created_by TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS resource_info (
+  guild_id TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  requirement TEXT,
+  PRIMARY KEY (guild_id, resource)
+);
+
+CREATE TABLE IF NOT EXISTS sticky_messages (
+  guild_id TEXT NOT NULL,
+  channel_id TEXT PRIMARY KEY,
+  content TEXT NOT NULL,
+  message_id TEXT,
+  created_by TEXT NOT NULL
+);
 `);
 
 for (const migration of [
@@ -290,7 +305,9 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN recordatorios_category_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN backups_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN self_roles_json TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN backups_category_id TEXT"
+  "ALTER TABLE guild_settings ADD COLUMN backups_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN stock_panel_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN stock_panel_message_id TEXT"
 ]) {
   try {
     database.exec(migration);
@@ -418,8 +435,45 @@ function clearStock(guildId, resource) {
   return db.prepare("DELETE FROM reward_keys WHERE guild_id = ? AND used = 0").run(guildId).changes;
 }
 
+function setResourceRequirement(guildId, resource, requirement) {
+  db.prepare(
+    "INSERT INTO resource_info (guild_id, resource, requirement) VALUES (?, ?, ?) ON CONFLICT(guild_id, resource) DO UPDATE SET requirement = excluded.requirement"
+  ).run(guildId, resource, requirement);
+}
+
+function getResourceRequirement(guildId, resource) {
+  return db.prepare("SELECT requirement FROM resource_info WHERE guild_id = ? AND resource = ?").get(guildId, resource)?.requirement ?? null;
+}
+
+function getStockOverview(guildId) {
+  const resources = db.prepare("SELECT resource, COUNT(*) as stock FROM reward_keys WHERE guild_id = ? AND used = 0 GROUP BY resource").all(guildId);
+  return resources.map((r) => ({ ...r, requirement: getResourceRequirement(guildId, r.resource) }));
+}
+
+function setStickyMessage(guildId, channelId, content, createdBy) {
+  db.prepare(
+    "INSERT INTO sticky_messages (guild_id, channel_id, content, message_id, created_by) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(channel_id) DO UPDATE SET content = excluded.content, message_id = NULL, created_by = excluded.created_by"
+  ).run(guildId, channelId, content, createdBy);
+}
+
+function getStickyMessage(channelId) {
+  return db.prepare("SELECT * FROM sticky_messages WHERE channel_id = ?").get(channelId);
+}
+
+function setStickyMessageId(channelId, messageId) {
+  db.prepare("UPDATE sticky_messages SET message_id = ? WHERE channel_id = ?").run(messageId, channelId);
+}
+
+function removeStickyMessage(channelId) {
+  return db.prepare("DELETE FROM sticky_messages WHERE channel_id = ?").run(channelId).changes;
+}
+
 function deleteKey(guildId, keyValue) {
   return db.prepare("DELETE FROM reward_keys WHERE guild_id = ? AND key_value = ? AND used = 0").run(guildId, keyValue).changes;
+}
+
+function getKeysByResource(guildId, resource) {
+  return db.prepare("SELECT key_value, used, redeemed_by FROM reward_keys WHERE guild_id = ? AND resource = ? ORDER BY used ASC, id ASC").all(guildId, resource);
 }
 
 function setAfk(guildId, userId, reason) {
@@ -678,9 +732,17 @@ module.exports = {
   addKey,
   keyExists,
   getAvailableResources,
+  setResourceRequirement,
+  getResourceRequirement,
+  getStockOverview,
+  setStickyMessage,
+  getStickyMessage,
+  setStickyMessageId,
+  removeStickyMessage,
   claimKey,
   clearStock,
   deleteKey,
+  getKeysByResource,
   setAfk,
   getAfk,
   clearAfk,
