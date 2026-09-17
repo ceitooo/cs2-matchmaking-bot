@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ChannelType, EmbedBuilder } = require("discord.js");
-const { getStockOverview, setResourceRequirement, clearStock, getGuildSettings, updateGuildSettings, getKeysByResource } = require("../db/database");
+const { db, getStockOverview, setResourceRequirement, clearStock, getGuildSettings, updateGuildSettings, getKeysByResource } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 
 function buildStockPanel(guildId) {
@@ -66,12 +66,7 @@ module.exports = {
         .addStringOption((o) => o.setName("recurso").setDescription("Nombre exacto del recurso").setRequired(true))
     )
     .addSubcommand((sub) => sub.setName("listar").setDescription("Lista el stock actual con sus requisitos"))
-    .addSubcommand((sub) =>
-      sub
-        .setName("verkeys")
-        .setDescription("Muestra todas las keys de un recurso (usadas y sin usar)")
-        .addStringOption((o) => o.setName("recurso").setDescription("Nombre exacto del recurso (ej: Ceitus Roblox)").setRequired(true))
-    ),
+    .addSubcommand((sub) => sub.setName("verkeys").setDescription("Muestra todas las keys (usadas y sin usar)")),
 
   async execute(interaction) {
     if (!isStaffOrCeito(interaction)) {
@@ -135,23 +130,34 @@ module.exports = {
     }
 
     if (sub === "verkeys") {
-      const recurso = interaction.options.getString("recurso", true).trim();
-      const keys = getKeysByResource(guildId, recurso);
-      if (keys.length === 0) {
-        return interaction.reply({ content: `No hay keys cargadas para **${recurso}**.`, flags: 64 });
+      // Todas las keys de todos los recursos
+      const allKeys = db.prepare("SELECT resource, key_value, used FROM reward_keys WHERE guild_id = ? ORDER BY resource ASC, used ASC, id ASC").all(guildId);
+      if (allKeys.length === 0) {
+        return interaction.reply({ content: "No hay keys cargadas.", flags: 64 });
       }
-      const libres   = keys.filter((k) => !k.used);
-      const usadas   = keys.filter((k) => k.used);
-      const libresTxt = libres.length  ? libres.map((k) => `\`${k.key_value}\``).join("\n")  : "_ninguna_";
-      const usadasTxt = usadas.length  ? usadas.map((k) => `\`${k.key_value}\``).join("\n")  : "_ninguna_";
-      const embed = new EmbedBuilder()
-        .setTitle(`🔑 Keys de ${recurso}`)
-        .setColor(0x5865f2)
-        .addFields(
-          { name: `✅ Sin usar (${libres.length})`,  value: libresTxt.slice(0, 1024) },
-          { name: `❌ Usadas (${usadas.length})`,    value: usadasTxt.slice(0, 1024) }
+      // Agrupar por recurso
+      const grouped = {};
+      for (const k of allKeys) {
+        if (!grouped[k.resource]) grouped[k.resource] = { libres: [], usadas: [] };
+        if (k.used) grouped[k.resource].usadas.push(k.key_value);
+        else        grouped[k.resource].libres.push(k.key_value);
+      }
+      const embeds = [];
+      for (const [recurso, { libres, usadas }] of Object.entries(grouped)) {
+        const libresTxt = libres.length ? libres.map((k) => `\`${k}\``).join("\n") : "_ninguna_";
+        const usadasTxt = usadas.length ? usadas.map((k) => `\`${k}\``).join("\n") : "_ninguna_";
+        embeds.push(
+          new EmbedBuilder()
+            .setTitle(`🔑 ${recurso}`)
+            .setColor(0x5865f2)
+            .addFields(
+              { name: `✅ Sin usar (${libres.length})`, value: libresTxt.slice(0, 1024) },
+              { name: `❌ Usadas (${usadas.length})`,   value: usadasTxt.slice(0, 1024) }
+            )
         );
-      return interaction.reply({ embeds: [embed], flags: 64 });
+      }
+      // Discord permite máx 10 embeds por mensaje
+      return interaction.reply({ embeds: embeds.slice(0, 10), flags: 64 });
     }
   }
 };
