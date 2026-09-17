@@ -5,6 +5,7 @@ const { startSubscriptionChecker } = require("../utils/subscriptionChecker");
 const { startGiveawayChecker } = require("../utils/giveawayChecker");
 const { startDbBackups } = require("../utils/dbBackup");
 const { startPersonalReminderChecker } = require("../utils/personalReminderChecker");
+const { restoreQueuesOnReady } = require("../utils/quickQueue");
 
 module.exports = {
   name: "clientReady",
@@ -13,7 +14,7 @@ module.exports = {
     console.log(`Bot conectado como ${client.user.tag}`);
 
     client.user.setPresence({
-      activities: [{ name: "custom", type: ActivityType.Custom, state: "download ceitotweaks" }],
+      activities: [{ name: "custom", type: ActivityType.Custom, state: "discord.gg/ceitus" }],
       status: "online"
     });
 
@@ -23,5 +24,6 @@ module.exports = {
     startGiveawayChecker(client);
     startDbBackups(client);
     startPersonalReminderChecker(client);
+    restoreQueuesOnReady(client).catch((e) => console.error("[quickQueue] Error restaurando colas:", e.message));
   }
 };

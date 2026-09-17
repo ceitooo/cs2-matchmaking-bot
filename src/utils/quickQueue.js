@@ -193,11 +193,50 @@ async function handleVoiceChannelEmpty(channel) {
   await channel.delete().catch(() => {});
 }
 
+async function restoreQueuesOnReady(client) {
+  const openQueues = db.prepare("SELECT * FROM quick_queues WHERE status = 'open'").all();
+  for (const queue of openQueues) {
+    // Re-schedule expire timer si hay jugadores dentro
+    if (queue.first_joined_at) {
+      const elapsed = Date.now() - queue.first_joined_at;
+      if (elapsed >= EXPIRE_AFTER_MS) {
+        // Ya expiró mientras el bot estaba caído — limpiar ahora
+        db.prepare("DELETE FROM quick_queue_players WHERE queue_id = ?").run(queue.id);
+        db.prepare("UPDATE quick_queues SET first_joined_at = NULL WHERE id = ?").run(queue.id);
+      } else {
+        // Reprogramar con el tiempo restante
+        const remaining = EXPIRE_AFTER_MS - elapsed;
+        const timer = setTimeout(async () => {
+          db.prepare("DELETE FROM quick_queue_players WHERE queue_id = ?").run(queue.id);
+          db.prepare("UPDATE quick_queues SET first_joined_at = NULL WHERE id = ?").run(queue.id);
+          const ch = await client.channels.fetch(queue.channel_id).catch(() => null);
+          if (ch && queue.message_id) {
+            const msg = await ch.messages.fetch(queue.message_id).catch(() => null);
+            if (msg) await msg.edit(buildQuickQueuePanel(queue.id)).catch(() => {});
+          }
+        }, remaining);
+        expireTimers.set(queue.id, timer);
+      }
+    }
+
+    // Actualizar el panel para que refleje el estado actual (por si algo cambió)
+    try {
+      const ch = await client.channels.fetch(queue.channel_id).catch(() => null);
+      if (ch && queue.message_id) {
+        const msg = await ch.messages.fetch(queue.message_id).catch(() => null);
+        if (msg) await msg.edit(buildQuickQueuePanel(queue.id)).catch(() => {});
+      }
+    } catch {}
+  }
+  console.log(`[quickQueue] ${openQueues.length} cola(s) restaurada(s).`);
+}
+
 module.exports = {
   MODES,
   buildQuickQueuePanel,
   createQuickQueue,
   joinQuickQueue,
   leaveQuickQueue,
-  handleVoiceChannelEmpty
+  handleVoiceChannelEmpty,
+  restoreQueuesOnReady
 };
