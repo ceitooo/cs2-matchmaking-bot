@@ -32,6 +32,7 @@ const SPAM_MAX_MESSAGES = 5;
 const MUTE_DURATION_MS = 60 * 1000;
 
 const recentMessages = new Map(); // `${guildId}:${userId}` -> timestamps[]
+const stickyLock = new Set(); // Previene carreras de concurrencia por canal
 
 function isSpamming(guildId, userId) {
   const key = `${guildId}:${userId}`;
@@ -75,37 +76,75 @@ async function detectAndStoreKeys(message, settings) {
 
 async function ensureInviteStickyBottom(message, settings) {
   if (!settings.invites_channel_id || message.channelId !== settings.invites_channel_id) return;
-  if (message.author.id === message.client.user.id && message.embeds[0]?.title === STICKY_TITLE) return;
+  const channelId = message.channelId;
+  const lockKey = `invite:${channelId}`;
+  if (stickyLock.has(lockKey)) return;
+  stickyLock.add(lockKey);
 
-  const channel = message.channel;
+  try {
+    const channel = message.channel;
+    const recent = await channel.messages.fetch({ limit: 5 }).catch(() => null);
+    if (!recent || recent.size === 0) return;
 
-  if (settings.invites_sticky_message_id) {
-    const old = await channel.messages.fetch(settings.invites_sticky_message_id).catch(() => null);
-    if (old) await old.delete().catch(() => {});
+    const lastMsg = recent.first();
+    if (lastMsg && lastMsg.id === settings.invites_sticky_message_id) return;
+
+    for (const [, msg] of recent) {
+      if (msg.author.id === message.client.user.id && msg.embeds[0]?.title === STICKY_TITLE) {
+        await msg.delete().catch(() => {});
+      }
+    }
+    if (settings.invites_sticky_message_id) {
+      const old = await channel.messages.fetch(settings.invites_sticky_message_id).catch(() => null);
+      if (old) await old.delete().catch(() => {});
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(STICKY_TITLE)
+      .setColor(0x5865f2)
+      .setDescription("Por cada **5 invitaciones** válidas conseguís **7 días** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
+
+    const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
+    if (sticky) updateGuildSettings(message.guild.id, { invites_sticky_message_id: sticky.id });
+  } catch (err) {
+    console.error("[sticky] Error en ensureInviteStickyBottom:", err.message);
+  } finally {
+    stickyLock.delete(lockKey);
   }
-
-  const embed = new EmbedBuilder()
-    .setTitle(STICKY_TITLE)
-    .setColor(0x5865f2)
-    .setDescription("Por cada **5 invitaciones** válidas conseguís **7 días** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
-
-  const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
-  if (sticky) updateGuildSettings(message.guild.id, { invites_sticky_message_id: sticky.id });
 }
 
 async function ensureGenericSticky(message) {
-  const sticky = getStickyMessage(message.channelId);
+  const channelId = message.channelId;
+  const sticky = getStickyMessage(channelId);
   if (!sticky) return;
-  if (message.author.id === message.client.user.id && message.id === sticky.message_id) return;
 
-  if (sticky.message_id) {
-    const old = await message.channel.messages.fetch(sticky.message_id).catch(() => null);
-    if (old) await old.delete().catch(() => {});
+  if (stickyLock.has(channelId)) return;
+  stickyLock.add(channelId);
+
+  try {
+    const channel = message.channel;
+    const recent = await channel.messages.fetch({ limit: 5 }).catch(() => null);
+    if (!recent || recent.size === 0) return;
+
+    const lastMsg = recent.first();
+    if (lastMsg && lastMsg.id === sticky.message_id) return;
+
+    for (const [, msg] of recent) {
+      if (msg.author.id === message.client.user.id) {
+        if (msg.id === sticky.message_id || (msg.embeds.length > 0 && msg.embeds[0].description === sticky.content)) {
+          await msg.delete().catch(() => {});
+        }
+      }
+    }
+
+    const embed = new EmbedBuilder().setColor(0x5865f2).setDescription(sticky.content);
+    const sent = await channel.send({ embeds: [embed] }).catch(() => null);
+    if (sent) setStickyMessageId(channelId, sent.id);
+  } catch (err) {
+    console.error("[sticky] Error en ensureGenericSticky:", err.message);
+  } finally {
+    stickyLock.delete(channelId);
   }
-
-  const embed = new EmbedBuilder().setColor(0x5865f2).setDescription(sticky.content);
-  const sent = await message.channel.send({ embeds: [embed] }).catch(() => null);
-  if (sent) setStickyMessageId(message.channelId, sent.id);
 }
 
 async function scrubVerificationChannel(message) {
@@ -273,6 +312,7 @@ module.exports = {
   name: "messageCreate",
   async execute(message) {
     if (!message.guild) return;
+    if (message.author.bot) return;
 
     const settings = getGuildSettings(message.guild.id);
 
@@ -291,7 +331,6 @@ module.exports = {
     await handleXp(message);
     await handleAfk(message);
 
-    if (message.author.bot) return;
     if (!settings.automod_enabled) return;
     if (isStaffOrCeito({ member: message.member, memberPermissions: message.member?.permissions })) return;
 
