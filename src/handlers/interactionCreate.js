@@ -1,4 +1,4 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder } = require("discord.js");
 const {
   db,
   getOrCreatePlayer,
@@ -18,6 +18,7 @@ const { getProducts } = require("../utils/shopBuilder");
 const { createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
 const { isStaffOrCeito, isCs2CommandBlockedInGuild, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
 const { pickWinners } = require("../utils/giveawayChecker");
+const { refreshStockPanel } = require("../commands/stock");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
 const LOW_STOCK_THRESHOLD = 2;
@@ -181,8 +182,12 @@ module.exports = {
         return interaction.reply({ content: `❌ Se quedó sin stock justo ahora. Avisale a un admin para que cargue más de **${resource}**.`, flags: 64 });
       }
 
-      await interaction.reply({ content: `🔑 Acá tenés tu key de **${resource}** (7 días):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
+      const disabledMenu = StringSelectMenuBuilder.from(interaction.component).setDisabled(true).setPlaceholder("Ya canjeaste esta recompensa");
+      await interaction.update({ components: [new ActionRowBuilder().addComponents(disabledMenu)] }).catch(() => {});
+
+      await interaction.followUp({ content: `🔑 Acá tenés tu acceso de **${resource}** (7 días):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
       await warnIfLowStock(interaction.client, guildId, resource);
+      await refreshStockPanel(interaction.client, guildId);
       return;
     }
 
@@ -342,24 +347,41 @@ module.exports = {
     }
 
     if (interaction.isButton() && interaction.customId === "test_key_dm") {
-      const dmSent = await interaction.user
-        .send({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle("🎉 ¡Felicidades, conseguiste 5 invitaciones!")
-              .setColor(0x2ecc71)
-              .setDescription("Elegí 7 días de uno de los siguientes recursos y te mando la key acá mismo:")
-          ]
-        })
-        .then(() =>
-          interaction.user.send({ content: "🔑 Acá tenés tu key de **Ceitus** (7 días):\n```CEITUS-TEST-TEST-TEST-TEST```\n⚠️ Esta es una key de prueba, no funciona de verdad." })
-        )
-        .catch(() => null);
+      const resources = getAvailableResources(interaction.guildId);
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎉 ¡Felicidades, conseguiste 5 invitaciones!")
+        .setColor(0x2ecc71)
+        .setDescription(
+          resources.length > 0
+            ? "Elegí 7 días de uno de los siguientes recursos y te mando la key acá mismo:\n\n⚠️ Esto es una **simulación**, si elegís una opción no se descuenta stock real."
+            : "Todavía no hay recursos cargados para canjear.\n\n⚠️ Esto es una **simulación**."
+        );
+
+      const components = [];
+      if (resources.length > 0) {
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId("test_key_select")
+          .setPlaceholder("Elegí un recurso")
+          .addOptions(resources.map((r) => ({ label: `${r.resource} (7 días)`, value: r.resource, description: `Stock: ${r.stock}` })));
+        components.push(new ActionRowBuilder().addComponents(menu));
+      }
+
+      const dmSent = await interaction.user.send({ embeds: [embed], components }).catch(() => null);
 
       if (!dmSent) {
         return interaction.reply({ content: "❌ No pude enviarte el DM (revisá que tengas los mensajes directos abiertos).", flags: 64 });
       }
       return interaction.reply({ content: "✅ Te mandé la simulación por DM.", flags: 64 });
+    }
+
+    if (interaction.isStringSelectMenu() && interaction.customId === "test_key_select") {
+      const resource = interaction.values[0];
+      await interaction.reply({
+        content: `🔑 Acá tenés tu key de **${resource}** (7 días):\n\`\`\`${resource.toUpperCase().replace(/\s+/g, "")}-TEST-TEST-TEST-TEST\`\`\`\n⚠️ Esta es una key de prueba, no funciona de verdad.`,
+        flags: 64
+      });
+      return;
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("ticket_ping:")) {

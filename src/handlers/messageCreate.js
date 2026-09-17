@@ -12,10 +12,13 @@ const {
   listBlacklistWords,
   canGainXp,
   addXp,
-  getLevelRoles
+  getLevelRoles,
+  getStickyMessage,
+  setStickyMessageId
 } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 const { buildBoostMessage } = require("../utils/boostBuilder");
+const { extractKeys, resolveResourceName } = require("../utils/keyDetection");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
 
@@ -25,11 +28,6 @@ const BOOST_MESSAGE_TYPES = [8, 9, 10, 11];
 const SPAM_WINDOW_MS = 5000;
 const SPAM_MAX_MESSAGES = 5;
 const MUTE_DURATION_MS = 60 * 1000;
-
-// Ej: CEITUS-ROJB-Q3DZ-61PE-5RU3 (recurso + 4 bloques de 4 caracteres).
-// Sin \b al inicio/final a propósito: así también corta keys pegadas sin
-// espacio entre ellas (el guion después del recurso ya marca el límite).
-const KEY_REGEX = /[A-Z][A-Z0-9]{1,11}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/gi;
 
 const recentMessages = new Map(); // `${guildId}:${userId}` -> timestamps[]
 
@@ -45,16 +43,15 @@ function isSpamming(guildId, userId) {
 async function detectAndStoreKeys(message, settings) {
   if (!settings.stock_keys_channel_id || message.channelId !== settings.stock_keys_channel_id) return;
 
-  const matches = message.content.match(KEY_REGEX);
-  if (!matches || matches.length === 0) return;
+  const matches = extractKeys(message.content);
+  if (matches.length === 0) return;
 
   const added = [];
-  for (const raw of matches) {
-    const key = raw.trim().toUpperCase();
+  for (const key of matches) {
     if (keyExists(message.guild.id, key)) continue;
 
     const resourceRaw = key.split("-")[0];
-    const resource = resourceRaw.charAt(0) + resourceRaw.slice(1).toLowerCase();
+    const resource = resolveResourceName(resourceRaw);
     addKey(message.guild.id, resource, key, message.author.id);
     added.push(resource);
   }
@@ -92,6 +89,21 @@ async function ensureInviteStickyBottom(message, settings) {
 
   const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
   if (sticky) updateGuildSettings(message.guild.id, { invites_sticky_message_id: sticky.id });
+}
+
+async function ensureGenericSticky(message) {
+  const sticky = getStickyMessage(message.channelId);
+  if (!sticky) return;
+  if (message.author.id === message.client.user.id && message.id === sticky.message_id) return;
+
+  if (sticky.message_id) {
+    const old = await message.channel.messages.fetch(sticky.message_id).catch(() => null);
+    if (old) await old.delete().catch(() => {});
+  }
+
+  const embed = new EmbedBuilder().setColor(0x5865f2).setDescription(sticky.content);
+  const sent = await message.channel.send({ embeds: [embed] }).catch(() => null);
+  if (sent) setStickyMessageId(message.channelId, sent.id);
 }
 
 async function scrubVerificationChannel(message) {
@@ -229,6 +241,7 @@ module.exports = {
 
     await detectAndStoreKeys(message, settings);
     await ensureInviteStickyBottom(message, settings);
+    await ensureGenericSticky(message);
     await scrubVerificationChannel(message);
     await handleGreeting(message);
     await handleFaq(message);
