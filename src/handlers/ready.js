@@ -9,17 +9,50 @@ const { restoreQueuesOnReady } = require("../utils/quickQueue");
 const fs = require("fs");
 const path = require("path");
 
-async function deployGuildCommands(client) {
+// Comandos ligados al negocio/economía de Ceitus (stock, keys, tienda,
+// sorteos, niveles, bienvenida/boost...): solo deben existir en el server
+// de Ceitus, no tiene sentido que aparezcan en otros servers del bot.
+const CEITUS_ONLY_COMMANDS = new Set([
+  "generarkeyceitusroblox",
+  "regenerarstock",
+  "eliminarkey",
+  "vaciarstock",
+  "stock",
+  "stickymensaje",
+  "tienda",
+  "sorteo",
+  "nivelrol",
+  "referencia",
+  "misinvitaciones",
+  "bienvenida",
+  "boost",
+  "probarboost",
+  "probarkey",
+  "panel",
+  "vincular-steam"
+]);
+
+async function deployCommands(client) {
   try {
-    const commands = [];
+    const globalCommands = [];
+    const ceitusCommands = [];
     const commandsPath = path.join(__dirname, "../commands");
     for (const file of fs.readdirSync(commandsPath).filter((f) => f.endsWith(".js"))) {
       const cmd = require(path.join(commandsPath, file));
-      if (cmd.data) commands.push(cmd.data.toJSON());
+      if (!cmd.data) continue;
+      const json = cmd.data.toJSON();
+      if (CEITUS_ONLY_COMMANDS.has(json.name)) {
+        ceitusCommands.push(json);
+      } else {
+        globalCommands.push(json);
+      }
     }
+
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: commands });
-    console.log(`[deploy] ${commands.length} comandos registrados en el servidor.`);
+    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: globalCommands });
+    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: ceitusCommands });
+
+    console.log(`[deploy] ${globalCommands.length} comandos globales, ${ceitusCommands.length} solo en Ceitus.`);
   } catch (e) {
     console.error("[deploy] Error registrando comandos:", e.message);
   }
@@ -43,6 +76,6 @@ module.exports = {
     startDbBackups(client);
     startPersonalReminderChecker(client);
     restoreQueuesOnReady(client).catch((e) => console.error("[quickQueue] Error restaurando colas:", e.message));
-    deployGuildCommands(client);
+    deployCommands(client);
   }
 };
