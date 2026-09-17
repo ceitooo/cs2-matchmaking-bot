@@ -83,13 +83,14 @@ async function ensureInviteStickyBottom(message, settings) {
 
   try {
     const channel = message.channel;
-    const recent = await channel.messages.fetch({ limit: 5 }).catch(() => null);
+    const recent = await channel.messages.fetch({ limit: 10 }).catch(() => null);
     if (!recent || recent.size === 0) return;
 
-    const lastMsg = recent.first();
-    if (lastMsg && lastMsg.id === settings.invites_sticky_message_id) return;
+    const sorted = Array.from(recent.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    const newestMsg = sorted[0];
+    if (newestMsg && newestMsg.id === settings.invites_sticky_message_id) return;
 
-    for (const [, msg] of recent) {
+    for (const msg of sorted) {
       if (msg.author.id === message.client.user.id && msg.embeds[0]?.title === STICKY_TITLE) {
         await msg.delete().catch(() => {});
       }
@@ -123,13 +124,14 @@ async function ensureGenericSticky(message) {
 
   try {
     const channel = message.channel;
-    const recent = await channel.messages.fetch({ limit: 5 }).catch(() => null);
+    const recent = await channel.messages.fetch({ limit: 10 }).catch(() => null);
     if (!recent || recent.size === 0) return;
 
-    const lastMsg = recent.first();
-    if (lastMsg && lastMsg.id === sticky.message_id) return;
+    const sorted = Array.from(recent.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+    const newestMsg = sorted[0];
+    if (newestMsg && newestMsg.id === sticky.message_id) return;
 
-    for (const [, msg] of recent) {
+    for (const msg of sorted) {
       if (msg.author.id === message.client.user.id) {
         if (msg.id === sticky.message_id || (msg.embeds.length > 0 && msg.embeds[0].description === sticky.content)) {
           await msg.delete().catch(() => {});
