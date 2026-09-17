@@ -59,7 +59,7 @@ module.exports = {
     console.log(`Bot conectado como ${client.user.tag}`);
 
     client.user.setPresence({
-      activities: [{ name: "custom", type: ActivityType.Custom, state: "/help┃discord.gg/ceitus" }],
+      activities: [{ name: "custom", type: ActivityType.Custom, state: "☁️ /help・discord.gg/ceitus" }],
       status: "online"
     });
 
