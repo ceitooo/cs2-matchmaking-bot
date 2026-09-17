@@ -212,6 +212,14 @@ CREATE TABLE IF NOT EXISTS blacklist_words (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS scam_domains (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  domain TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS levels (
   guild_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
@@ -307,7 +315,9 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN self_roles_json TEXT",
   "ALTER TABLE guild_settings ADD COLUMN backups_category_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN stock_panel_channel_id TEXT",
-  "ALTER TABLE guild_settings ADD COLUMN stock_panel_message_id TEXT"
+  "ALTER TABLE guild_settings ADD COLUMN stock_panel_message_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN security_level TEXT NOT NULL DEFAULT 'medio'",
+  "ALTER TABLE guild_settings ADD COLUMN antiscam_log_channel_id TEXT"
 ]) {
   try {
     database.exec(migration);
@@ -633,6 +643,23 @@ function deleteBlacklistWord(guildId, id) {
   return db.prepare("DELETE FROM blacklist_words WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
 }
 
+function addScamDomain(guildId, domain, createdBy) {
+  db.prepare("INSERT INTO scam_domains (guild_id, domain, created_by, created_at) VALUES (?, ?, ?, ?)").run(guildId, domain.toLowerCase(), createdBy, Date.now());
+  return db.prepare("SELECT * FROM scam_domains WHERE guild_id = ? ORDER BY id DESC LIMIT 1").get(guildId);
+}
+
+function listScamDomains(guildId) {
+  return db.prepare("SELECT * FROM scam_domains WHERE guild_id = ? ORDER BY id ASC").all(guildId);
+}
+
+function deleteScamDomain(guildId, id) {
+  return db.prepare("DELETE FROM scam_domains WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
+}
+
+function setSecurityLevel(guildId, level) {
+  db.prepare("UPDATE guild_settings SET security_level = ? WHERE guild_id = ?").run(level, guildId);
+}
+
 const XP_COOLDOWN_MS = 60 * 1000;
 
 function xpThreshold(level) {
@@ -761,6 +788,10 @@ module.exports = {
   addBlacklistWord,
   listBlacklistWords,
   deleteBlacklistWord,
+  addScamDomain,
+  listScamDomains,
+  deleteScamDomain,
+  setSecurityLevel,
   addPersonalReminder,
   getDuePersonalReminders,
   markPersonalReminderSent,

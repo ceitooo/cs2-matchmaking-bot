@@ -14,11 +14,13 @@ const {
   addXp,
   getLevelRoles,
   getStickyMessage,
-  setStickyMessageId
+  setStickyMessageId,
+  listScamDomains
 } = require("../db/database");
 const { isStaffOrCeito } = require("../utils/permissions");
 const { buildBoostMessage } = require("../utils/boostBuilder");
 const { extractKeys, resolveResourceName } = require("../utils/keyDetection");
+const { extractUrls, matchesScamDomain, hasImage, isSuspiciousNewAccount, getTimeoutMs } = require("../utils/scamFilter");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
 
@@ -155,6 +157,45 @@ async function handleBlacklist(message) {
     .catch(() => {});
 }
 
+async function logSecurityAction(message, settings, text) {
+  const logChannelId = settings.antiscam_log_channel_id || settings.antiraid_log_channel_id || settings.log_server_channel_id;
+  if (!logChannelId) return;
+  const channel = await message.guild.channels.fetch(logChannelId).catch(() => null);
+  if (channel?.isTextBased()) await channel.send(text).catch(() => {});
+}
+
+async function handleScamProtection(message, settings) {
+  if (message.author.bot) return;
+  if (isStaffOrCeito({ member: message.member, memberPermissions: message.member?.permissions })) return;
+
+  const urls = extractUrls(message);
+  const imagePresent = hasImage(message);
+  if (urls.length === 0 && !imagePresent) return;
+
+  const scamDomains = listScamDomains(message.guild.id);
+  const matchedDomain = matchesScamDomain(urls, scamDomains);
+
+  const level = settings.security_level || "medio";
+  const isHeuristicHit = !matchedDomain && level !== "basico" && urls.length > 0 && imagePresent && message.member && isSuspiciousNewAccount(message.member, level);
+
+  if (!matchedDomain && !isHeuristicHit) return;
+
+  await message.delete().catch(() => {});
+  await addWarn(message.guild.id, message.author.id, message.client.user.id, matchedDomain ? `Anti-estafa: link a dominio bloqueado (${matchedDomain})` : "Anti-estafa: cuenta nueva con link + imagen sospechosos");
+
+  if (message.member?.moderatable) {
+    await message.member.timeout(getTimeoutMs(level), "Anti-estafa: mensaje sospechoso eliminado").catch(() => {});
+  }
+
+  await logSecurityAction(
+    message,
+    settings,
+    matchedDomain
+      ? `🚨 **Anti-estafa:** mensaje de ${message.author.tag} (${message.author.id}) eliminado en <#${message.channelId}> — dominio bloqueado: **${matchedDomain}**.`
+      : `⚠️ **Anti-estafa (nivel ${level}):** mensaje de ${message.author.tag} (${message.author.id}) eliminado en <#${message.channelId}> — cuenta nueva con link + imagen, revisar manualmente.`
+  );
+}
+
 // Discord manda su propio mensajito de "X acaba de mejorar el servidor". Lo
 // reemplazamos por nuestro embed con imagen en el canal de boosts configurado.
 async function replaceBoostSystemMessage(message, settings) {
@@ -246,6 +287,7 @@ module.exports = {
     await handleGreeting(message);
     await handleFaq(message);
     await handleBlacklist(message);
+    await handleScamProtection(message, settings);
     await handleXp(message);
     await handleAfk(message);
 
