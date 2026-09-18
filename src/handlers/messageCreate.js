@@ -76,6 +76,8 @@ async function detectAndStoreKeys(message, settings) {
 
 async function ensureInviteStickyBottom(message, settings) {
   if (!settings.invites_channel_id || message.channelId !== settings.invites_channel_id) return;
+  if (message.author.bot) return; // evita que el propio mensaje del sticky retrigger el reenvío
+
   const channelId = message.channelId;
   const lockKey = `invite:${channelId}`;
   if (stickyLock.has(lockKey)) return;
@@ -83,18 +85,7 @@ async function ensureInviteStickyBottom(message, settings) {
 
   try {
     const channel = message.channel;
-    const recent = await channel.messages.fetch({ limit: 10 }).catch(() => null);
-    if (!recent || recent.size === 0) return;
 
-    const sorted = Array.from(recent.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
-    const newestMsg = sorted[0];
-    if (newestMsg && newestMsg.id === settings.invites_sticky_message_id) return;
-
-    for (const msg of sorted) {
-      if (msg.author.id === message.client.user.id && msg.embeds[0]?.title === STICKY_TITLE) {
-        await msg.delete().catch(() => {});
-      }
-    }
     if (settings.invites_sticky_message_id) {
       const old = await channel.messages.fetch(settings.invites_sticky_message_id).catch(() => null);
       if (old) await old.delete().catch(() => {});
@@ -115,6 +106,8 @@ async function ensureInviteStickyBottom(message, settings) {
 }
 
 async function ensureGenericSticky(message) {
+  if (message.author.bot) return; // evita que el propio mensaje del sticky retrigger el reenvío
+
   const channelId = message.channelId;
   const sticky = getStickyMessage(channelId);
   if (!sticky) return;
@@ -124,19 +117,10 @@ async function ensureGenericSticky(message) {
 
   try {
     const channel = message.channel;
-    const recent = await channel.messages.fetch({ limit: 10 }).catch(() => null);
-    if (!recent || recent.size === 0) return;
 
-    const sorted = Array.from(recent.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
-    const newestMsg = sorted[0];
-    if (newestMsg && newestMsg.id === sticky.message_id) return;
-
-    for (const msg of sorted) {
-      if (msg.author.id === message.client.user.id) {
-        if (msg.id === sticky.message_id || (msg.embeds.length > 0 && msg.embeds[0].description === sticky.content)) {
-          await msg.delete().catch(() => {});
-        }
-      }
+    if (sticky.message_id) {
+      const old = await channel.messages.fetch(sticky.message_id).catch(() => null);
+      if (old) await old.delete().catch(() => {});
     }
 
     const embed = new EmbedBuilder().setColor(0x5865f2).setDescription(sticky.content);
