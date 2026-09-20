@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, MessageReferenceType } = require("discord.js");
 const {
   getGuildSettings,
   updateGuildSettings,
@@ -20,6 +20,7 @@ const {
 const { isStaffOrCeito } = require("../utils/permissions");
 const { buildBoostMessage } = require("../utils/boostBuilder");
 const { extractKeys, resolveResourceName } = require("../utils/keyDetection");
+const { lockoutMember } = require("../utils/lockout");
 const { extractUrls, matchesScamDomain, hasImage, isSuspiciousNewAccount, getTimeoutMs } = require("../utils/scamFilter");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
@@ -30,6 +31,7 @@ const BOOST_MESSAGE_TYPES = [8, 9, 10, 11];
 const SPAM_WINDOW_MS = 5000;
 const SPAM_MAX_MESSAGES = 5;
 const MUTE_DURATION_MS = 60 * 1000;
+const LOCKOUT_MS = 5 * 60 * 1000;
 
 const recentMessages = new Map(); // `${guildId}:${userId}` -> timestamps[]
 const stickyLock = new Set(); // Previene carreras de concurrencia por canal
@@ -182,6 +184,25 @@ async function handleBlacklist(message) {
     .catch(() => {});
 }
 
+async function handleForwardBlock(message) {
+  if (message.author.bot) return false;
+  if (message.reference?.type !== MessageReferenceType.Forward) return false;
+  if (isStaffOrCeito({ member: message.member, memberPermissions: message.member?.permissions })) return false;
+
+  addWarn(message.guild.id, message.author.id, message.client.user.id, "Reenvió un mensaje (no permitido)");
+  const minutes = LOCKOUT_MS / 60000;
+
+  await message.channel
+    .send(`⚠️ ${message.author} reenvió un mensaje: recibió **1 warn** y pierde acceso a todos los canales por **${minutes} minutos**.`)
+    .then((m) => setTimeout(() => m.delete().catch(() => {}), 10000))
+    .catch(() => {});
+
+  if (message.member) {
+    await lockoutMember(message.guild, message.member, LOCKOUT_MS).catch((e) => console.error("[lockout] Error aplicando castigo:", e.message));
+  }
+  return true;
+}
+
 async function logSecurityAction(message, settings, text) {
   const logChannelId = settings.antiscam_log_channel_id || settings.antiraid_log_channel_id || settings.log_server_channel_id;
   if (!logChannelId) return;
@@ -305,6 +326,8 @@ module.exports = {
     if (BOOST_MESSAGE_TYPES.includes(message.type)) {
       return replaceBoostSystemMessage(message, settings);
     }
+
+    if (await handleForwardBlock(message)) return;
 
     await detectAndStoreKeys(message, settings);
     await ensureInviteStickyBottom(message, settings);

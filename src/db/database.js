@@ -212,6 +212,14 @@ CREATE TABLE IF NOT EXISTS blacklist_words (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS channel_lockouts (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  previous_json TEXT NOT NULL,
+  PRIMARY KEY (guild_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS scam_domains (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -656,6 +664,24 @@ function deleteScamDomain(guildId, id) {
   return db.prepare("DELETE FROM scam_domains WHERE guild_id = ? AND id = ?").run(guildId, id).changes;
 }
 
+function saveLockout(guildId, userId, expiresAt, previous) {
+  db.prepare(
+    "INSERT INTO channel_lockouts (guild_id, user_id, expires_at, previous_json) VALUES (?, ?, ?, ?) ON CONFLICT(guild_id, user_id) DO UPDATE SET expires_at = excluded.expires_at"
+  ).run(guildId, userId, expiresAt, JSON.stringify(previous));
+}
+
+function getLockout(guildId, userId) {
+  return db.prepare("SELECT * FROM channel_lockouts WHERE guild_id = ? AND user_id = ?").get(guildId, userId);
+}
+
+function listLockouts() {
+  return db.prepare("SELECT * FROM channel_lockouts").all();
+}
+
+function deleteLockout(guildId, userId) {
+  db.prepare("DELETE FROM channel_lockouts WHERE guild_id = ? AND user_id = ?").run(guildId, userId);
+}
+
 function setSecurityLevel(guildId, level) {
   db.prepare("UPDATE guild_settings SET security_level = ? WHERE guild_id = ?").run(level, guildId);
 }
@@ -792,6 +818,10 @@ module.exports = {
   listScamDomains,
   deleteScamDomain,
   setSecurityLevel,
+  saveLockout,
+  getLockout,
+  listLockouts,
+  deleteLockout,
   addPersonalReminder,
   getDuePersonalReminders,
   markPersonalReminderSent,

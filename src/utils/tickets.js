@@ -137,6 +137,53 @@ async function createProductTicket(guild, member, product) {
   return channel;
 }
 
+async function createAllianceTicket(guild, member) {
+  const category = await getOrCreateTicketsCategory(guild);
+  await getOrCreateLogsChannel(guild).catch(() => {});
+
+  await guild.channels.fetch().catch(() => {});
+  const existing = guild.channels.cache.find((c) => c.parentId === category.id && c.topic?.startsWith(`Alianza de ${member.id}`));
+  if (existing) return { channel: existing, created: false };
+
+  const overwrites = [
+    { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    ...staffRoleIds(guild).map((id) => ({
+      id,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels]
+    })),
+    { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+  ];
+
+  const channel = await guild.channels.create({
+    name: `alianza-${member.user.username}`.slice(0, 90),
+    type: ChannelType.GuildText,
+    parent: category.id,
+    topic: `Alianza de ${member.id} · Solicitud de alianza`,
+    permissionOverwrites: overwrites
+  });
+
+  await channel.setPosition(0).catch(() => {});
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("🤝 Solicitud de alianza")
+    .setDescription("Contanos acá el nombre de tu servidor, la cantidad de miembros, de qué trata y el link de invitación. El staff te va a responder por este canal.");
+
+  const buttonsRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`ticket_close:${channel.id}`).setLabel("Cerrar ticket").setStyle(ButtonStyle.Danger).setEmoji("🔒"),
+    new ButtonBuilder().setCustomId(`ticket_ping:${channel.id}`).setLabel("Avisar al staff").setStyle(ButtonStyle.Secondary).setEmoji("🔔")
+  );
+
+  await channel.send({
+    content: `${member} · ${pingRoleIds(guild).map((id) => `<@&${id}>`).join(" ")}`,
+    embeds: [embed],
+    components: [buttonsRow]
+  });
+  registerPing(channel.id);
+
+  return { channel, created: true };
+}
+
 async function closeTicket(channel, closedBy) {
   const messages = [];
   let before;
@@ -172,6 +219,7 @@ async function closeTicket(channel, closedBy) {
 }
 
 module.exports = {
+  createAllianceTicket,
   getOrCreateTicketsCategory,
   getOrCreateLogsChannel,
   createProductTicket,

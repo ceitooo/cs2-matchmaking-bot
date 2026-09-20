@@ -6,6 +6,7 @@ const { startGiveawayChecker } = require("../utils/giveawayChecker");
 const { startDbBackups } = require("../utils/dbBackup");
 const { startPersonalReminderChecker } = require("../utils/personalReminderChecker");
 const { restoreQueuesOnReady } = require("../utils/quickQueue");
+const { startLockoutChecker } = require("../utils/lockout");
 const fs = require("fs");
 const path = require("path");
 
@@ -70,6 +71,7 @@ module.exports = {
     startDbBackups(client);
     startPersonalReminderChecker(client);
     restoreQueuesOnReady(client).catch((e) => console.error("[quickQueue] Error restaurando colas:", e.message));
+    startLockoutChecker(client);
     deployCommands(client);
   }
 };
