@@ -147,7 +147,7 @@ function isGreeting(content) {
 }
 
 function isTicketChannel(channel) {
-  return channel.name.startsWith("ticket-") || channel.parent?.name === "🎫・Tickets";
+  return channel.name.startsWith("ticket-") || /tickets/i.test(channel.parent?.name ?? "");
 }
 
 async function handleGreeting(message) {

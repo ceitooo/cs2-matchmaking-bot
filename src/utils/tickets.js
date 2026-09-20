@@ -1,5 +1,19 @@
 const { ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder } = require("discord.js");
-const { getGuildSettings, updateGuildSettings } = require("../db/database");
+const { getGuildSettings, updateGuildSettings, nextTicketNumber } = require("../db/database");
+
+function slugify(text) {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "ticket";
+}
+
+function ticketChannelName(label, guildId) {
+  return `${slugify(label)}-${String(nextTicketNumber(guildId)).padStart(4, "0")}`;
+}
 const { CEITO_ROLE_ID } = require("./permissions");
 
 const TICKETS_CATEGORY_NAME = "🎫・Tickets";
@@ -107,7 +121,7 @@ async function createProductTicket(guild, member, product) {
   ];
 
   const channel = await guild.channels.create({
-    name: `ticket-${member.user.username}`.slice(0, 90),
+    name: ticketChannelName(product.name, guild.id),
     type: ChannelType.GuildText,
     parent: category.id,
     topic: `Ticket de ${member.id} · Producto: ${product.name} (${product.price})`,
@@ -155,7 +169,7 @@ async function createAllianceTicket(guild, member) {
   ];
 
   const channel = await guild.channels.create({
-    name: `alianza-${member.user.username}`.slice(0, 90),
+    name: ticketChannelName("solicitud de alianza", guild.id),
     type: ChannelType.GuildText,
     parent: category.id,
     topic: `Alianza de ${member.id} · Solicitud de alianza`,

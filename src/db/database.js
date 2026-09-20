@@ -220,6 +220,11 @@ CREATE TABLE IF NOT EXISTS channel_lockouts (
   PRIMARY KEY (guild_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS ticket_counters (
+  guild_id TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS scam_domains (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guild_id TEXT NOT NULL,
@@ -682,6 +687,11 @@ function deleteLockout(guildId, userId) {
   db.prepare("DELETE FROM channel_lockouts WHERE guild_id = ? AND user_id = ?").run(guildId, userId);
 }
 
+function nextTicketNumber(guildId) {
+  db.prepare("INSERT INTO ticket_counters (guild_id, count) VALUES (?, 1) ON CONFLICT(guild_id) DO UPDATE SET count = count + 1").run(guildId);
+  return db.prepare("SELECT count FROM ticket_counters WHERE guild_id = ?").get(guildId).count;
+}
+
 function setSecurityLevel(guildId, level) {
   db.prepare("UPDATE guild_settings SET security_level = ? WHERE guild_id = ?").run(level, guildId);
 }
@@ -818,6 +828,7 @@ module.exports = {
   listScamDomains,
   deleteScamDomain,
   setSecurityLevel,
+  nextTicketNumber,
   saveLockout,
   getLockout,
   listLockouts,

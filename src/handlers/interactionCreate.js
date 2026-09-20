@@ -199,7 +199,10 @@ module.exports = {
       }
 
       await interaction.deferReply({ flags: 64 });
-      const channel = await createProductTicket(interaction.guild, interaction.member, product).catch(() => null);
+      const channel = await createProductTicket(interaction.guild, interaction.member, product).catch((e) => {
+        console.error("[ticket-tienda] Error creando el ticket:", e);
+        return null;
+      });
       if (!channel) {
         return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       }
@@ -208,7 +211,10 @@ module.exports = {
 
     if (interaction.isButton() && interaction.customId === "alliance_ticket_open") {
       await interaction.deferReply({ flags: 64 });
-      const result = await createAllianceTicket(interaction.guild, interaction.member).catch(() => null);
+      const result = await createAllianceTicket(interaction.guild, interaction.member).catch((e) => {
+        console.error("[ticket-alianza] Error creando el ticket:", e);
+        return null;
+      });
       if (!result) return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       return interaction.editReply({ content: result.created ? `✅ Ticket creado: ${result.channel}` : `Ya tenés un ticket de alianza abierto: ${result.channel}` });
     }
