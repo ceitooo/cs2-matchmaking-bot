@@ -19,12 +19,32 @@ async function channelStillExists(guild, channelId) {
 
 // Busca por nombre dentro del server (por si ya fueron creados a mano o vía script,
 // sin pasar por la base de datos del bot) antes de crear uno nuevo.
+// Si el canal ya existe, la categoría correcta es donde esté ahora: así el
+// auto-setup no recrea categorías que se hayan fusionado o reordenado a mano.
+async function adoptCategoryFromChannel(guild, settings, channelKey, categoryKey) {
+  const channel = await guild.channels.fetch(settings[channelKey]).catch(() => null);
+  if (!channel) return false;
+  if (channel.parentId && settings[categoryKey] !== channel.parentId) {
+    updateGuildSettings(guild.id, { [categoryKey]: channel.parentId });
+  }
+  return true;
+}
+
 function findByName(guild, name, type) {
   return guild.channels.cache.find((c) => c.name === name && c.type === type) ?? null;
 }
 
 async function ensureLogsSetup(guild, settings) {
   const me = guild.members.me;
+
+  const missing = [];
+  for (const logChannel of LOG_CHANNELS) {
+    if (!(await channelStillExists(guild, settings[logChannel.key]))) missing.push(logChannel);
+  }
+  if (missing.length === 0) {
+    await adoptCategoryFromChannel(guild, settings, LOG_CHANNELS[0].key, "logs_category_id");
+    return;
+  }
 
   let categoryId = settings.logs_category_id;
   if (!(await channelStillExists(guild, categoryId))) {
@@ -70,6 +90,8 @@ async function ensureLogsSetup(guild, settings) {
 }
 
 async function ensureInvitesSetup(guild, settings) {
+  if (await adoptCategoryFromChannel(guild, settings, "invites_channel_id", "invites_category_id")) return;
+
   const me = guild.members.me;
 
   let categoryId = settings.invites_category_id;
@@ -122,6 +144,8 @@ const STOCK_KEYS_PERMS = [
 ];
 
 async function ensureStockKeysSetup(guild, settings) {
+  if (await adoptCategoryFromChannel(guild, settings, "stock_keys_channel_id", "stock_keys_category_id")) return;
+
   const me = guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
     console.warn(`[auto-setup] Al bot le falta el permiso "Gestionar canales" en ${guild.name}, no puedo crear regenerar-stock-invitaciones.`);
@@ -168,6 +192,8 @@ async function ensureStockKeysSetup(guild, settings) {
 }
 
 async function ensureRecordatoriosSetup(guild, settings) {
+  if (await adoptCategoryFromChannel(guild, settings, "recordatorios_channel_id", "recordatorios_category_id")) return;
+
   const me = guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) return;
 
@@ -211,6 +237,8 @@ async function ensureRecordatoriosSetup(guild, settings) {
 }
 
 async function ensureBackupsSetup(guild, settings) {
+  if (await adoptCategoryFromChannel(guild, settings, "backups_channel_id", "backups_category_id")) return;
+
   const me = guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) return;
 
