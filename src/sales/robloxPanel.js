@@ -18,7 +18,7 @@ function genRef() {
   return "ORD-" + crypto.randomBytes(5).toString("hex").toUpperCase().slice(0, 8);
 }
 
-async function buildSalesPanel() {
+async function buildSalesPanel(status = "activo", version = null) {
   const rates = await getRates();
 
   const priceLines = PLANS.map((p) => {
@@ -26,19 +26,24 @@ async function buildSalesPanel() {
     return `\`${p.labelEs} - ${p.labelEn}: ${ars.toLocaleString()} ARS — ${p.price.toFixed(2)} USD\``;
   }).join("\n");
 
+  const isActive = status === "activo";
+  const statusLine = isActive
+    ? "🟢 **ACTIVO / UNDETECTED** — (External — VAC Safe)"
+    : "🔴 **EN MANTENIMIENTO** — Actualizando para la nueva versión de Roblox...";
+
+  const versionLine = version ? `\n🔄 **Versión Roblox:** \`${version}\`` : "";
+
   const embed = new EmbedBuilder()
     .setTitle("🛒 Ceitus 「Roblox」 External")
-    .setColor(0xe60000)
-    .addFields(
-      { name: "Estado / Status", value: "🟢 **UNDETECTED**  (External VAC Safe)", inline: false }
-    )
+    .setColor(isActive ? 0xe60000 : 0xff8800)
     .setDescription(
+      `${statusLine}${versionLine}\n\n` +
       `🇪🇸 Software externo para Roblox. **Entrega automática inmediata y activación en la nube.**\n` +
       `🇺🇸 External software for Roblox. **Instant automated delivery and cloud activation.**\n\n` +
       `**Precios | Prices:**\n${priceLines}\n\n` +
       `${"─".repeat(28)}\n` +
       `**Pagos / Payments:** 💙 PayPal | 💙 Mercado Pago | 💳 Tarjetas / Cards\n\n` +
-      `🛒 **Despliega el menú de abajo para seleccionar tu plan / Select a plan below:**`
+      (isActive ? `🛒 **Despliega el menú de abajo para seleccionar tu plan / Select a plan below:**` : `⏳ **Volvé más tarde — Back soon!**`)
     )
     .setFooter({ text: "Ceitus 「Roblox」 External — Instant Delivery — Entrega Inmediata" });
 
@@ -53,7 +58,8 @@ async function buildSalesPanel() {
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId("roblox_select_plan")
-      .setPlaceholder("🛒 Selecciona un plan para Roblox...")
+      .setPlaceholder(isActive ? "🛒 Selecciona un plan para Roblox..." : "⏳ En mantenimiento — volvé más tarde")
+      .setDisabled(!isActive)
       .addOptions(selectOptions)
   );
 

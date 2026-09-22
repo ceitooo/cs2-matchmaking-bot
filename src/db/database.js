@@ -336,6 +336,10 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN roblox_tickets_category_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN roblox_proofs_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN roblox_customer_role_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_updates_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_announce_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_panel_status TEXT NOT NULL DEFAULT 'activo'",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_last_version TEXT",
   `CREATE TABLE IF NOT EXISTS roblox_tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,

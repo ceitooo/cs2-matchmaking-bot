@@ -22,13 +22,13 @@ client.once("ready", async () => {
     if (settings.roblox_panel_channel_id === CHANNEL_ID && settings.roblox_panel_message_id) {
       message = await channel.messages.fetch(settings.roblox_panel_message_id).catch(() => null);
       if (message) {
-        await message.edit(buildSalesPanel());
+        await message.edit(await buildSalesPanel());
         console.log(`[panel] Panel actualizado (mensaje ${message.id})`);
       }
     }
 
     if (!message) {
-      message = await channel.send(buildSalesPanel());
+      message = await channel.send(await buildSalesPanel());
       updateGuildSettings(GUILD_ID, {
         roblox_panel_channel_id: CHANNEL_ID,
         roblox_panel_message_id: message.id

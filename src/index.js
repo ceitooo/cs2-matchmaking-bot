@@ -4,6 +4,7 @@ const path = require("node:path");
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const { startSteamAuthServer } = require("./steam/server");
 const { startIpnServer, setClient: setIpnClient } = require("./sales/paypalIpn");
+const { startRobloxChecker, setCheckerClient } = require("./sales/robloxChecker");
 
 const client = new Client({
   intents: [
@@ -37,4 +38,6 @@ for (const file of fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"))) 
 startSteamAuthServer(client);
 setIpnClient(client);
 startIpnServer();
+setCheckerClient(client);
+startRobloxChecker();
 client.login(process.env.DISCORD_TOKEN);

@@ -12,6 +12,7 @@ const CEITUS_ONLY_COMMANDS = new Set([
   "stock",
   "tienda",
   "roblox-ventas",
+  "onceitusroblox",
   "misinvitaciones",
   "probarboost",
   "probarkey",
