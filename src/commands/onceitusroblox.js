@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { getGuildSettings, updateGuildSettings } = require("../db/database");
 const { updatePanel, fetchRobloxVersion } = require("../sales/robloxChecker");
 const { isStaffOrCeito } = require("../utils/permissions");
+const { updateInfoEmbed } = require("../utils/infoPanel");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -33,12 +34,15 @@ module.exports = {
       roblox_last_version: version
     });
 
-    // Actualizar el panel
+    // Actualizar panel de ventas
     await updatePanel(guild, {
       ...settings,
       roblox_panel_status: "activo",
       roblox_last_version: version
     });
+
+    // Actualizar embed de info (ceitus-roblox-descargar) → estado activo
+    await updateInfoEmbed(interaction.client, "activo", version).catch(() => {});
 
     // Canal de anuncios: el pasado en el comando, o el configurado, o el de actualizaciones
     const announceCh =

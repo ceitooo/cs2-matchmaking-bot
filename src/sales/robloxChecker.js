@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require("discord.js");
 const { getGuildSettings, updateGuildSettings } = require("../db/database");
 const { buildSalesPanel } = require("./robloxPanel");
+const { updateInfoEmbed } = require("../utils/infoPanel");
 
 const ROBLOX_VERSION_URL = "https://clientsettings.roblox.com/v2/client-version/WindowsPlayer";
 const CHECK_INTERVAL_MS = 3 * 60 * 1000; // cada 3 minutos
@@ -54,21 +55,29 @@ async function checkRobloxVersion() {
       roblox_panel_status: "mantenimiento"
     });
 
-    // Actualizar panel
+    // Actualizar panel de ventas
     await updatePanel(guild, { ...settings, roblox_last_version: newVersion, roblox_panel_status: "mantenimiento" });
 
+    // Actualizar embed de info (ceitus-roblox-descargar) → estado mantenimiento
+    await updateInfoEmbed(_client, "mantenimiento", newVersion).catch(() => {});
+
     // Notificar en canal de actualizaciones
-    const updatesCh = await guild.channels.fetch(settings.roblox_updates_channel_id).catch(() => null);
+    const updatesCh =
+      guild.channels.cache.find(c => c.name === "roblox-updates") ??
+      (settings.roblox_updates_channel_id
+        ? await guild.channels.fetch(settings.roblox_updates_channel_id).catch(() => null)
+        : null);
+    const descargarCh = guild.channels.cache.find(c => c.name === "ceitus-roblox-descargar");
     if (updatesCh?.isTextBased()) {
       const embed = new EmbedBuilder()
-        .setTitle("🔴 Roblox se actualizó — Ceitus en Mantenimiento")
-        .setColor(0xff8800)
-        .setDescription(
-          `Roblox lanzó una nueva versión.\n` +
-          `**Ceitus Roblox External** está temporalmente en mantenimiento mientras se actualiza.\n\n` +
-          `🔄 **Nueva versión:** \`${newVersion}\`\n\n` +
-          `El staff será notificado cuando esté listo. Usá \`/onceitusroblox\` para reactivarlo.`
+        .setTitle("🔄  Roblox se actualizó — Ceitus en Mantenimiento")
+        .setColor(0xFF8800)
+        .addFields(
+          { name: "📌  Versión anterior", value: `\`${lastVersion ?? "desconocida"}\``, inline: true },
+          { name: "✅  Versión nueva",    value: `\`${newVersion}\``,                   inline: true },
+          { name: "⚙️  Estado",          value: "🔴 **En mantenimiento**", inline: false }
         )
+        .setFooter({ text: "Ceitus Roblox External • Monitor automático" })
         .setTimestamp();
       await updatesCh.send({ embeds: [embed] }).catch(() => {});
     }
