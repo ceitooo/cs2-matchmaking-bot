@@ -77,12 +77,7 @@ async function buildTicketEmbed(member, plan, ref) {
   const ars = toArs(plan.price, rates.ars);
   const uyu = toUyu(plan.price, rates.uyu);
 
-  // PayPal donate link (reemplaza el deprecado cgi-bin/webscr)
-  const paypalLink =
-    `https://www.paypal.com/donate?business=${encodeURIComponent(PP_EMAIL)}` +
-    `&amount=${plan.price.toFixed(2)}&currency_code=USD` +
-    `&item_name=${encodeURIComponent(`Ceitus Roblox ${plan.labelEs} - ${ref}`)}` +
-    `&no_recurring=1&no_note=0`;
+  const paypalLink = `https://www.paypal.me/ceitoooo/${plan.price.toFixed(2)}`;
 
   const embed = new EmbedBuilder()
     .setTitle("🛒 Orden de Compra / Purchase Order — Ceitus 「Roblox」 External")

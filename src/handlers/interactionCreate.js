@@ -68,9 +68,7 @@ async function dmMatchCode(interaction, lobby) {
     .catch(() => {});
 }
 
-module.exports = {
-  name: "interactionCreate",
-  async execute(interaction) {
+async function _handle(interaction) {
     if (interaction.isAutocomplete()) {
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command?.autocomplete) return;
@@ -576,6 +574,17 @@ module.exports = {
       await finalizeLobby(interaction.guild, lobbyId);
       await interaction.message.edit(buildLobbyPanel(lobbyId)).catch(() => {});
       return;
+    }
+}
+
+module.exports = {
+  name: "interactionCreate",
+  async execute(interaction) {
+    try {
+      await _handle(interaction);
+    } catch (e) {
+      if (e?.code === 10062) return;
+      console.error("[interactionCreate] Error:", e?.message ?? e);
     }
   }
 };
