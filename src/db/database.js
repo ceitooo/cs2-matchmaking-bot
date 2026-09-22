@@ -330,7 +330,25 @@ for (const migration of [
   "ALTER TABLE guild_settings ADD COLUMN stock_panel_channel_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN stock_panel_message_id TEXT",
   "ALTER TABLE guild_settings ADD COLUMN security_level TEXT NOT NULL DEFAULT 'medio'",
-  "ALTER TABLE guild_settings ADD COLUMN antiscam_log_channel_id TEXT"
+  "ALTER TABLE guild_settings ADD COLUMN antiscam_log_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_panel_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_panel_message_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_tickets_category_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_proofs_channel_id TEXT",
+  "ALTER TABLE guild_settings ADD COLUMN roblox_customer_role_id TEXT",
+  `CREATE TABLE IF NOT EXISTS roblox_tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    price_usd REAL NOT NULL,
+    payment_method TEXT,
+    mp_preference_id TEXT,
+    mp_reference TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL
+  )`
 ]) {
   try {
     database.exec(migration);
@@ -770,9 +788,30 @@ function claimKey(guildId, resource, userId) {
   return key;
 }
 
+function createRobloxTicket(guildId, channelId, userId, plan, priceUsd) {
+  db.prepare(
+    "INSERT INTO roblox_tickets (guild_id, channel_id, user_id, plan, price_usd, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(guildId, channelId, userId, plan, priceUsd, Date.now());
+  return db.prepare("SELECT * FROM roblox_tickets WHERE channel_id = ?").get(channelId);
+}
+
+function getRobloxTicketByChannel(channelId) {
+  return db.prepare("SELECT * FROM roblox_tickets WHERE channel_id = ?").get(channelId);
+}
+
+function updateRobloxTicket(channelId, fields) {
+  const columns = Object.keys(fields);
+  if (columns.length === 0) return;
+  const set = columns.map((c) => `${c} = ?`).join(", ");
+  db.prepare(`UPDATE roblox_tickets SET ${set} WHERE channel_id = ?`).run(...columns.map((c) => fields[c]), channelId);
+}
+
 module.exports = {
   db,
   dbPath,
+  createRobloxTicket,
+  getRobloxTicketByChannel,
+  updateRobloxTicket,
   countActiveSubscriptions,
   addGiveaway,
   getActiveGiveawaysDue,

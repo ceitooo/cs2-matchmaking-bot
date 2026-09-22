@@ -19,6 +19,14 @@ const { createAllianceTicket, createProductTicket, closeTicket, pingRoleIds, can
 const { isStaffOrCeito, isCs2CommandBlockedInGuild, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
 const { pickWinners } = require("../utils/giveawayChecker");
 const { refreshStockPanel } = require("../commands/stock");
+const {
+  openPurchaseTicket,
+  handleSelectMercadoPago,
+  handleSelectPayPal,
+  handleVerifyMercadoPago,
+  handleConfirmPayPal,
+  handleCloseTicket: closeRobloxTicket
+} = require("../sales/robloxTickets");
 
 const STEAM_BYPASS_ROLE_ID = "1339092538413551686"; // rol "ceito"
 const LOW_STOCK_THRESHOLD = 2;
@@ -417,6 +425,44 @@ module.exports = {
       await closeTicket(interaction.channel, interaction.user);
       await interaction.channel.delete().catch(() => {});
       return;
+    }
+
+    // ── Ceitus Roblox — panel de ventas ──────────────────────────────────────
+    if (interaction.isButton() && interaction.customId.startsWith("roblox_buy:")) {
+      const planId = interaction.customId.split(":")[1];
+      await interaction.deferReply({ flags: 64 });
+      const result = await openPurchaseTicket(interaction.guild, interaction.member, planId).catch((e) => {
+        console.error("[roblox-ticket] Error abriendo ticket:", e);
+        return null;
+      });
+      if (!result) return interaction.editReply({ content: "❌ No pude crear el ticket. Avisale al staff." });
+      return interaction.editReply({ content: result.created ? `✅ Ticket creado: ${result.channel}` : `Ya tenés un ticket abierto: ${result.channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("roblox_pay_mp:")) {
+      const planId = interaction.customId.split(":")[1];
+      return handleSelectMercadoPago(interaction, planId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("roblox_pay_pp:")) {
+      const planId = interaction.customId.split(":")[1];
+      return handleSelectPayPal(interaction, planId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("roblox_verify_mp:")) {
+      const planId = interaction.customId.split(":")[1];
+      return handleVerifyMercadoPago(interaction, planId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith("roblox_confirm_pp:")) {
+      const parts = interaction.customId.split(":");
+      const planId = parts[1];
+      const userId = parts[2];
+      return handleConfirmPayPal(interaction, planId, userId);
+    }
+
+    if (interaction.isButton() && interaction.customId === "roblox_close_ticket") {
+      return closeRobloxTicket(interaction);
     }
 
     if (!interaction.isButton()) return;
