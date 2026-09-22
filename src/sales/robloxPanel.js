@@ -111,16 +111,15 @@ async function buildTicketEmbed(member, plan, ref) {
     .setFooter({ text: `${ref} - Ceitus 「Roblox」 External` })
     .setTimestamp();
 
-  return embed;
+  return { embed, paypalUrl: paypalLink };
 }
 
-function buildTicketButtons(planId, userId) {
-  return new ActionRowBuilder().addComponents(
+function buildTicketButtons(planId, userId, paypalUrl) {
+  const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`roblox_pay_pp:${planId}:${userId}`)
+      .setURL(paypalUrl)
       .setLabel("Pagar con PayPal (USD)")
-      .setEmoji("1262497785531076618")
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Link),
     new ButtonBuilder()
       .setCustomId(`roblox_deliver:${planId}:${userId}`)
       .setLabel("Entregar Key (Staff)")
@@ -130,6 +129,7 @@ function buildTicketButtons(planId, userId) {
       .setLabel("Cerrar / Close")
       .setStyle(ButtonStyle.Danger)
   );
+  return row;
 }
 
 module.exports = { PLANS, getPlan, genRef, buildSalesPanel, buildTicketEmbed, buildTicketButtons };

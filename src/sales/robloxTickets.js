@@ -49,8 +49,8 @@ async function openPurchaseTicket(guild, member, planId) {
     }).catch(() => {});
   }
 
-  const ticketEmbed = await buildTicketEmbed(member, plan, ref);
-  const buttons = buildTicketButtons(planId, member.id);
+  const { embed: ticketEmbed, paypalUrl } = await buildTicketEmbed(member, plan, ref);
+  const buttons = buildTicketButtons(planId, member.id, paypalUrl);
 
   await channel.send({ content: `${member}`, embeds: [ticketEmbed], components: [buttons] });
 
