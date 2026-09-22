@@ -12,6 +12,7 @@ const { getPlan, genRef, buildTicketEmbed, buildTicketButtons } = require("./rob
 const { isStaffOrCeito } = require("../utils/permissions");
 
 const RESOURCE = "ceitus-roblox";
+const DEFAULT_TICKETS_CATEGORY = "1543089373552185434"; // 🎫・Tickets
 
 async function openPurchaseTicket(guild, member, planId) {
   const plan = getPlan(planId);
@@ -25,9 +26,8 @@ async function openPurchaseTicket(guild, member, planId) {
   );
   if (existing) return { channel: existing, created: false };
 
-  const category = settings.roblox_tickets_category_id
-    ? await guild.channels.fetch(settings.roblox_tickets_category_id).catch(() => null)
-    : null;
+  const categoryId = settings.roblox_tickets_category_id || DEFAULT_TICKETS_CATEGORY;
+  const category = await guild.channels.fetch(categoryId).catch(() => null);
 
   const num = nextTicketNumber(guild.id);
   const ref = genRef();

@@ -66,17 +66,23 @@ async function buildSalesPanel(status = "activo", version = null) {
   return { embeds: [embed], components: [row] };
 }
 
+// Datos hardcodeados como fallback si no están en el .env del servidor
+const MP_ALIAS   = process.env.ROBLOX_MP_ALIAS    || "luana28cortez.mp";
+const MP_CVU     = process.env.ROBLOX_MP_CVU      || "0000003100046563350684";
+const MP_TITULAR = process.env.ROBLOX_MP_TITULAR  || "Luana Milena Cortez Mansilla";
+const PP_EMAIL   = process.env.ROBLOX_PAYPAL_EMAIL || "holadariobueno@gmail.com";
+
 async function buildTicketEmbed(member, plan, ref) {
   const rates = await getRates();
   const ars = toArs(plan.price, rates.ars);
   const uyu = toUyu(plan.price, rates.uyu);
 
+  // PayPal donate link (reemplaza el deprecado cgi-bin/webscr)
   const paypalLink =
-    `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick` +
-    `&business=${encodeURIComponent(process.env.ROBLOX_PAYPAL_EMAIL)}` +
+    `https://www.paypal.com/donate?business=${encodeURIComponent(PP_EMAIL)}` +
     `&amount=${plan.price.toFixed(2)}&currency_code=USD` +
-    `&item_name=${encodeURIComponent(`Ceitus Roblox ${plan.labelEs}`)}` +
-    `&no_shipping=1&custom=${encodeURIComponent(ref)}`;
+    `&item_name=${encodeURIComponent(`Ceitus Roblox ${plan.labelEs} - ${ref}`)}` +
+    `&no_recurring=1&no_note=0`;
 
   const embed = new EmbedBuilder()
     .setTitle("🛒 Orden de Compra / Purchase Order — Ceitus 「Roblox」 External")
@@ -91,9 +97,9 @@ async function buildTicketEmbed(member, plan, ref) {
       `${"─".repeat(28)}\n\n` +
       `**Datos para Pago / Payment Details:**\n` +
       `• 💙 🇦🇷 **Mercado Pago (Transferencia Directa — 0% Recargo):**\n` +
-      `  ◦ Alias: \`${process.env.ROBLOX_MP_ALIAS}\`\n` +
-      `  ◦ CVU: \`${process.env.ROBLOX_MP_CVU}\`\n` +
-      `  ◦ Titular: \`${process.env.ROBLOX_MP_TITULAR}\`\n` +
+      `  ◦ Alias: \`${MP_ALIAS}\`\n` +
+      `  ◦ CVU: \`${MP_CVU}\`\n` +
+      `  ◦ Titular: \`${MP_TITULAR}\`\n` +
       `  ◦ Monto exacto a transferir: **$ ${ars.toLocaleString()} ARS**\n` +
       `  ◦ *Transferí desde tu banco o Mercado Pago sin comisiones y adjuntá la captura aquí.*\n` +
       `• 💙 🇺🇾 **Prex:**\n` +
