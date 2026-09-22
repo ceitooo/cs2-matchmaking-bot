@@ -1,133 +1,129 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { getRates, toArs, toUyu } = require("./cotizacion");
+const crypto = require("crypto");
 
 const PLANS = [
-  { id: "3d",  label: "3 Días",  days: 3,  price: 0.99 },
-  { id: "12d", label: "12 Días", days: 12, price: 2.49 },
-  { id: "1m",  label: "1 Mes",   days: 30, price: 4.99 }
+  { id: "3d",  labelEs: "3 Días",  labelEn: "3 Days",  days: 3,  price: 0.99 },
+  { id: "12d", labelEs: "12 Días", labelEn: "12 Days", days: 12, price: 2.49 },
+  { id: "1m",  labelEs: "1 Mes",   labelEn: "Monthly", days: 30, price: 4.99 }
 ];
+
+const PANEL_IMAGE = process.env.ROBLOX_PANEL_IMAGE_URL ?? "";
 
 function getPlan(planId) {
   return PLANS.find((p) => p.id === planId) ?? null;
 }
 
-function buildSalesPanel() {
+function genRef() {
+  return "ORD-" + crypto.randomBytes(5).toString("hex").toUpperCase().slice(0, 8);
+}
+
+async function buildSalesPanel() {
+  const rates = await getRates();
+
+  const priceLines = PLANS.map((p) => {
+    const ars = toArs(p.price, rates.ars);
+    return `\`${p.labelEs} - ${p.labelEn}: ${ars.toLocaleString()} ARS — ${p.price.toFixed(2)} USD\``;
+  }).join("\n");
+
   const embed = new EmbedBuilder()
-    .setTitle("🎮 Ceitus Roblox — Panel de Ventas")
+    .setTitle("🛒 Ceitus 「Roblox」 External")
     .setColor(0xe60000)
-    .setDescription(
-      "Acceso premium a **Ceitus para Roblox**.\nElegí tu plan y se abre un ticket automáticamente."
-    )
     .addFields(
-      PLANS.map((p) => ({
-        name: `${p.label}`,
-        value: `**$${p.price.toFixed(2)} USD**`,
-        inline: true
-      }))
+      { name: "Estado / Status", value: "🟢 **UNDETECTED**  (External VAC Safe)", inline: false }
     )
-    .setFooter({ text: "Ceitus · Pagos vía MercadoPago o PayPal" })
-    .setTimestamp();
+    .setDescription(
+      `🇪🇸 Software externo para Roblox. **Entrega automática inmediata y activación en la nube.**\n` +
+      `🇺🇸 External software for Roblox. **Instant automated delivery and cloud activation.**\n\n` +
+      `**Precios | Prices:**\n${priceLines}\n\n` +
+      `${"─".repeat(28)}\n` +
+      `**Pagos / Payments:** 💙 PayPal | 💙 Mercado Pago | 💳 Tarjetas / Cards\n\n` +
+      `🛒 **Despliega el menú de abajo para seleccionar tu plan / Select a plan below:**`
+    )
+    .setFooter({ text: "Ceitus 「Roblox」 External — Instant Delivery — Entrega Inmediata" });
+
+  if (PANEL_IMAGE) embed.setImage(PANEL_IMAGE);
+
+  const selectOptions = PLANS.map((p) => ({
+    label: `🛒 ${p.labelEs} - ${p.labelEn}`,
+    description: `${toArs(p.price, rates.ars).toLocaleString()} ARS — ${p.price.toFixed(2)} USD`,
+    value: `roblox_plan_${p.id}`
+  }));
 
   const row = new ActionRowBuilder().addComponents(
-    PLANS.map((p) =>
-      new ButtonBuilder()
-        .setCustomId(`roblox_buy:${p.id}`)
-        .setLabel(`${p.label} — $${p.price.toFixed(2)}`)
-        .setStyle(ButtonStyle.Primary)
-    )
+    new StringSelectMenuBuilder()
+      .setCustomId("roblox_select_plan")
+      .setPlaceholder("🛒 Selecciona un plan para Roblox...")
+      .addOptions(selectOptions)
   );
 
   return { embeds: [embed], components: [row] };
 }
 
-function buildTicketEmbed(member, plan) {
-  return new EmbedBuilder()
-    .setTitle(`🛒 Compra — Ceitus Roblox ${plan.label}`)
+async function buildTicketEmbed(member, plan, ref) {
+  const rates = await getRates();
+  const ars = toArs(plan.price, rates.ars);
+  const uyu = toUyu(plan.price, rates.uyu);
+
+  const paypalLink =
+    `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick` +
+    `&business=${encodeURIComponent(process.env.ROBLOX_PAYPAL_EMAIL)}` +
+    `&amount=${plan.price.toFixed(2)}&currency_code=USD` +
+    `&item_name=${encodeURIComponent(`Ceitus Roblox ${plan.labelEs}`)}` +
+    `&no_shipping=1&custom=${encodeURIComponent(ref)}`;
+
+  const embed = new EmbedBuilder()
+    .setTitle("🛒 Orden de Compra / Purchase Order — Ceitus 「Roblox」 External")
     .setColor(0xe60000)
-    .addFields(
-      { name: "Plan",   value: plan.label,                    inline: true },
-      { name: "Precio", value: `$${plan.price.toFixed(2)} USD`, inline: true },
-      { name: "Usuario", value: `${member}`,                  inline: true }
+    .setDescription(
+      `**Cliente / Customer:** ${member}\n\n` +
+      `📦 **Producto / Product:** Ceitus 「Roblox」 External\n` +
+      `🛒 **Plan:** ${plan.labelEs} - ${plan.labelEn} — **$${plan.price.toFixed(2)} USD**\n` +
+      `🇦🇷 **Pesos Argentinos (ARS):** ~**$ ${ars.toLocaleString()} ARS** *(Cotización Blue/Cripto)*\n` +
+      `🇺🇾 **Pesos Uruguayos (UYU):** ~**$${uyu.toLocaleString()} UYU**\n` +
+      `**Referencia / Reference:** \`${ref}\`\n\n` +
+      `${"─".repeat(28)}\n\n` +
+      `**Datos para Pago / Payment Details:**\n` +
+      `• 💙 🇦🇷 **Mercado Pago (Transferencia Directa — 0% Recargo):**\n` +
+      `  ◦ Alias: \`${process.env.ROBLOX_MP_ALIAS}\`\n` +
+      `  ◦ CVU: \`${process.env.ROBLOX_MP_CVU}\`\n` +
+      `  ◦ Titular: \`${process.env.ROBLOX_MP_TITULAR}\`\n` +
+      `  ◦ Monto exacto a transferir: **$ ${ars.toLocaleString()} ARS**\n` +
+      `  ◦ *Transferí desde tu banco o Mercado Pago sin comisiones y adjuntá la captura aquí.*\n` +
+      `• 💙 🇺🇾 **Prex:**\n` +
+      `  ◦ Titular: \`Dario Bueno\`\n` +
+      `  ◦ Cuenta Prex: \`21059530\`\n` +
+      `  ◦ Enviá el comprobante en este canal para que el staff verifique y entregue tu key.\n` +
+      `• 💙 🌎 **PayPal:** [Haz clic aquí para pagar ($${plan.price.toFixed(2)} USD)](${paypalLink})\n` +
+      `• **¡Entrega automática 24/7 instantánea!**\n` +
+      `• **Nota / Referencia:** \`${ref}\`\n\n` +
+      `📌 **Instrucciones:**\n` +
+      `1. Si pagás por **Mercado Pago o Prex**, transferí el monto exacto al Alias/CVU indicado y **enviá el comprobante en este ticket**.\n` +
+      `2. Si pagás por **PayPal**, hacé clic en el botón de abajo para pagar en USD (se verifica automáticamente).\n` +
+      `3. El staff verificará tu transferencia y te entregará tu key al instante.`
     )
-    .setDescription("Elegí tu método de pago:")
+    .setFooter({ text: `${ref} - Ceitus 「Roblox」 External` })
     .setTimestamp();
+
+  return embed;
 }
 
-function buildPaymentRow(planId) {
+function buildTicketButtons(planId, userId) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`roblox_pay_mp:${planId}`)
-      .setLabel("💳 MercadoPago")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`roblox_pay_pp:${planId}`)
-      .setLabel("💰 PayPal")
+      .setCustomId(`roblox_pay_pp:${planId}:${userId}`)
+      .setLabel("Pagar con PayPal (USD)")
+      .setEmoji("1262497785531076618")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId("roblox_close_ticket")
-      .setLabel("✖ Cancelar")
-      .setStyle(ButtonStyle.Danger)
-  );
-}
-
-function buildMpEmbed(plan, payLink) {
-  return new EmbedBuilder()
-    .setTitle("💳 Pago con MercadoPago")
-    .setColor(0x009ee3)
-    .setDescription(
-      `**Plan:** ${plan.label} — **$${plan.price.toFixed(2)} USD**\n\n` +
-      `[➡️ Hacer click acá para pagar](${payLink})\n\n` +
-      `Después de pagar presioná **✅ Verificar Pago** y tu acceso se entrega automáticamente.`
-    )
-    .setFooter({ text: "El pago se verifica automáticamente con MercadoPago" });
-}
-
-function buildVerifyRow(planId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`roblox_verify_mp:${planId}`)
-      .setLabel("✅ Verificar Pago")
+      .setCustomId(`roblox_deliver:${planId}:${userId}`)
+      .setLabel("Entregar Key (Staff)")
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId("roblox_close_ticket")
-      .setLabel("✖ Cancelar")
+      .setLabel("Cerrar / Close")
       .setStyle(ButtonStyle.Danger)
   );
 }
 
-function buildPaypalEmbed(plan) {
-  return new EmbedBuilder()
-    .setTitle("💰 Pago con PayPal")
-    .setColor(0x003087)
-    .setDescription(
-      `**Plan:** ${plan.label} — **$${plan.price.toFixed(2)} USD**\n\n` +
-      `📧 Enviá el pago a:\n\`\`\`${process.env.ROBLOX_PAYPAL_EMAIL}\`\`\`\n` +
-      `Poné en el **concepto/nota**: \`Ceitus Roblox ${plan.label}\`\n\n` +
-      `Cuando envíes el comprobante acá, el staff lo confirma y recibís tu acceso.`
-    )
-    .setFooter({ text: "Pagos de PayPal confirmados manualmente por staff" });
-}
-
-function buildStaffConfirmRow(planId, userId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`roblox_confirm_pp:${planId}:${userId}`)
-      .setLabel("✅ Confirmar Pago (Staff)")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("roblox_close_ticket")
-      .setLabel("✖ Cancelar")
-      .setStyle(ButtonStyle.Danger)
-  );
-}
-
-module.exports = {
-  PLANS,
-  getPlan,
-  buildSalesPanel,
-  buildTicketEmbed,
-  buildPaymentRow,
-  buildMpEmbed,
-  buildVerifyRow,
-  buildPaypalEmbed,
-  buildStaffConfirmRow
-};
+module.exports = { PLANS, getPlan, genRef, buildSalesPanel, buildTicketEmbed, buildTicketButtons };

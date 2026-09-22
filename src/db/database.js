@@ -799,6 +799,10 @@ function getRobloxTicketByChannel(channelId) {
   return db.prepare("SELECT * FROM roblox_tickets WHERE channel_id = ?").get(channelId);
 }
 
+function getRobloxTicketByRef(ref) {
+  return db.prepare("SELECT * FROM roblox_tickets WHERE mp_reference = ?").get(ref);
+}
+
 function updateRobloxTicket(channelId, fields) {
   const columns = Object.keys(fields);
   if (columns.length === 0) return;
@@ -811,6 +815,7 @@ module.exports = {
   dbPath,
   createRobloxTicket,
   getRobloxTicketByChannel,
+  getRobloxTicketByRef,
   updateRobloxTicket,
   countActiveSubscriptions,
   addGiveaway,

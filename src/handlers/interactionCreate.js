@@ -21,10 +21,7 @@ const { pickWinners } = require("../utils/giveawayChecker");
 const { refreshStockPanel } = require("../commands/stock");
 const {
   openPurchaseTicket,
-  handleSelectMercadoPago,
-  handleSelectPayPal,
-  handleVerifyMercadoPago,
-  handleConfirmPayPal,
+  handleDeliverKey,
   handleCloseTicket: closeRobloxTicket
 } = require("../sales/robloxTickets");
 
@@ -428,8 +425,8 @@ module.exports = {
     }
 
     // ── Ceitus Roblox — panel de ventas ──────────────────────────────────────
-    if (interaction.isButton() && interaction.customId.startsWith("roblox_buy:")) {
-      const planId = interaction.customId.split(":")[1];
+    if (interaction.isStringSelectMenu() && interaction.customId === "roblox_select_plan") {
+      const planId = interaction.values[0].replace("roblox_plan_", "");
       await interaction.deferReply({ flags: 64 });
       const result = await openPurchaseTicket(interaction.guild, interaction.member, planId).catch((e) => {
         console.error("[roblox-ticket] Error abriendo ticket:", e);
@@ -439,26 +436,9 @@ module.exports = {
       return interaction.editReply({ content: result.created ? `✅ Ticket creado: ${result.channel}` : `Ya tenés un ticket abierto: ${result.channel}` });
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith("roblox_pay_mp:")) {
-      const planId = interaction.customId.split(":")[1];
-      return handleSelectMercadoPago(interaction, planId);
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith("roblox_pay_pp:")) {
-      const planId = interaction.customId.split(":")[1];
-      return handleSelectPayPal(interaction, planId);
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith("roblox_verify_mp:")) {
-      const planId = interaction.customId.split(":")[1];
-      return handleVerifyMercadoPago(interaction, planId);
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith("roblox_confirm_pp:")) {
+    if (interaction.isButton() && interaction.customId.startsWith("roblox_deliver:")) {
       const parts = interaction.customId.split(":");
-      const planId = parts[1];
-      const userId = parts[2];
-      return handleConfirmPayPal(interaction, planId, userId);
+      return handleDeliverKey(interaction, parts[1], parts[2]);
     }
 
     if (interaction.isButton() && interaction.customId === "roblox_close_ticket") {
