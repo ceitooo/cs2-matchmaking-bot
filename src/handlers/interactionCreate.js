@@ -15,7 +15,7 @@ const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 const { getProducts } = require("../utils/shopBuilder");
-const { createAllianceTicket, createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
+const { createAllianceTicket, createSupportTicket, createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
 const { isStaffOrCeito, isCs2CommandBlockedInGuild, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
 const { pickWinners } = require("../utils/giveawayChecker");
 const { refreshStockPanel } = require("../commands/stock");
@@ -220,6 +220,16 @@ async function _handle(interaction) {
       });
       if (!result) return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       return interaction.editReply({ content: result.created ? `✅ Ticket creado: ${result.channel}` : `Ya tenés un ticket de alianza abierto: ${result.channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === "support_ticket_open") {
+      await interaction.deferReply({ flags: 64 });
+      const result = await createSupportTicket(interaction.guild, interaction.member).catch((e) => {
+        console.error("[ticket-soporte] Error creando el ticket:", e);
+        return null;
+      });
+      if (!result) return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
+      return interaction.editReply({ content: result.created ? `✅ Ticket creado: ${result.channel}` : `Ya tenés un ticket de soporte abierto: ${result.channel}` });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith("ticket_renew:")) {

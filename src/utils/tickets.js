@@ -151,12 +151,32 @@ async function createProductTicket(guild, member, product) {
   return channel;
 }
 
-async function createAllianceTicket(guild, member) {
+const SIMPLE_TICKET_TYPES = {
+  alianza: {
+    label: "solicitud de alianza",
+    topicPrefix: "Alianza de",
+    topicSuffix: "Solicitud de alianza",
+    color: 0x5865f2,
+    title: "🤝 Solicitud de alianza",
+    description: "Contanos acá el nombre de tu servidor, la cantidad de miembros, de qué trata y el link de invitación. El staff te va a responder por este canal."
+  },
+  soporte: {
+    label: "soporte",
+    topicPrefix: "Soporte de",
+    topicSuffix: "Ticket de soporte",
+    color: 0x2ecc71,
+    title: "🆘 Ticket de soporte",
+    description: "Contanos qué problema tenés o qué necesitás, con todos los detalles que puedas (capturas, producto, cuándo pasó). El staff te va a responder por este canal."
+  }
+};
+
+async function createSimpleTicket(guild, member, type) {
+  const config = SIMPLE_TICKET_TYPES[type];
   const category = await getOrCreateTicketsCategory(guild);
   await getOrCreateLogsChannel(guild).catch(() => {});
 
   await guild.channels.fetch().catch(() => {});
-  const existing = guild.channels.cache.find((c) => c.parentId === category.id && c.topic?.startsWith(`Alianza de ${member.id}`));
+  const existing = guild.channels.cache.find((c) => c.parentId === category.id && c.topic?.startsWith(`${config.topicPrefix} ${member.id}`));
   if (existing) return { channel: existing, created: false };
 
   const overwrites = [
@@ -169,19 +189,16 @@ async function createAllianceTicket(guild, member) {
   ];
 
   const channel = await guild.channels.create({
-    name: ticketChannelName("solicitud de alianza", guild.id),
+    name: ticketChannelName(config.label, guild.id),
     type: ChannelType.GuildText,
     parent: category.id,
-    topic: `Alianza de ${member.id} · Solicitud de alianza`,
+    topic: `${config.topicPrefix} ${member.id} · ${config.topicSuffix}`,
     permissionOverwrites: overwrites
   });
 
   await channel.setPosition(0).catch(() => {});
 
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle("🤝 Solicitud de alianza")
-    .setDescription("Contanos acá el nombre de tu servidor, la cantidad de miembros, de qué trata y el link de invitación. El staff te va a responder por este canal.");
+  const embed = new EmbedBuilder().setColor(config.color).setTitle(config.title).setDescription(config.description);
 
   const buttonsRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`ticket_close:${channel.id}`).setLabel("Cerrar ticket").setStyle(ButtonStyle.Danger).setEmoji("🔒"),
@@ -197,6 +214,9 @@ async function createAllianceTicket(guild, member) {
 
   return { channel, created: true };
 }
+
+const createAllianceTicket = (guild, member) => createSimpleTicket(guild, member, "alianza");
+const createSupportTicket = (guild, member) => createSimpleTicket(guild, member, "soporte");
 
 async function closeTicket(channel, closedBy) {
   const messages = [];
@@ -234,6 +254,7 @@ async function closeTicket(channel, closedBy) {
 
 module.exports = {
   createAllianceTicket,
+  createSupportTicket,
   getOrCreateTicketsCategory,
   getOrCreateLogsChannel,
   createProductTicket,
