@@ -34,8 +34,10 @@ async function buildWantedImage(avatarUrl, username) {
   ctx.font = "bold 26px serif";
   ctx.fillText(username.toUpperCase(), WIDTH / 2, avatarY + AVATAR_SIZE + 45);
 
+  // Recompensa aleatoria entre $0 y $2.000.000.000
+  const reward = Math.floor(Math.random() * 2_000_000_001).toLocaleString("es-AR");
   ctx.font = "20px serif";
-  ctx.fillText("RECOMPENSA: $999,999", WIDTH / 2, avatarY + AVATAR_SIZE + 80);
+  ctx.fillText(`RECOMPENSA: $${reward}`, WIDTH / 2, avatarY + AVATAR_SIZE + 80, WIDTH - 30);
 
   return canvas.toBuffer("image/png");
 }
