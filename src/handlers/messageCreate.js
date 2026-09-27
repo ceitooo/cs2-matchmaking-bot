@@ -267,8 +267,10 @@ async function handleXp(message) {
   const result = addXp(message.guild.id, message.author.id, amount);
   if (!result.leveledUp) return;
 
-  // El aviso solo se manda en el canal "level-up" del server; si no existe, no se avisa
-  const levelChannel = message.guild.channels.cache.find((c) => c.isTextBased() && c.name.includes("level-up"));
+  // En Los Pinky el aviso va solo al canal "level-up"; en el resto, al canal del mensaje
+  const levelChannel = message.guild.id === "1544716660559192106"
+    ? message.guild.channels.cache.find((c) => c.isTextBased() && c.name.includes("level-up"))
+    : message.channel;
   if (levelChannel) await levelChannel.send(`🎉 ${message.author} subió a **nivel ${result.level}**!`).catch(() => {});
 
   const levelRoles = getLevelRoles(message.guild.id);
