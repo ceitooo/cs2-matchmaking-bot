@@ -78,7 +78,8 @@ async function detectAndStoreKeys(message, settings) {
 
 async function ensureInviteStickyBottom(message, settings) {
   if (!settings.invites_channel_id || message.channelId !== settings.invites_channel_id) return;
-  if (message.author.bot) return; // evita que el propio mensaje del sticky retrigger el reenvío
+  // Solo se ignora el propio sticky (si no, se reenviaría en bucle); los demás mensajes del bot sí lo bajan
+  if (message.author.id === message.client.user.id && message.embeds[0]?.title === STICKY_TITLE) return;
 
   const channelId = message.channelId;
   const lockKey = `invite:${channelId}`;
@@ -108,11 +109,11 @@ async function ensureInviteStickyBottom(message, settings) {
 }
 
 async function ensureGenericSticky(message) {
-  if (message.author.bot) return; // evita que el propio mensaje del sticky retrigger el reenvío
-
   const channelId = message.channelId;
   const sticky = getStickyMessage(channelId);
   if (!sticky) return;
+  // Solo se ignora el propio sticky (si no, se reenviaría en bucle); los demás mensajes del bot sí lo bajan
+  if (message.author.id === message.client.user.id && message.embeds[0]?.description === sticky.content) return;
 
   if (stickyLock.has(channelId)) return;
   stickyLock.add(channelId);
@@ -324,9 +325,15 @@ module.exports = {
   name: "messageCreate",
   async execute(message) {
     if (!message.guild) return;
-    if (message.author.bot) return;
 
     const settings = getGuildSettings(message.guild.id);
+
+    // Los mensajes de bots (incluido este) solo bajan los stickies al final del canal
+    if (message.author.bot) {
+      await ensureInviteStickyBottom(message, settings);
+      await ensureGenericSticky(message);
+      return;
+    }
 
     if (BOOST_MESSAGE_TYPES.includes(message.type)) {
       return replaceBoostSystemMessage(message, settings);
