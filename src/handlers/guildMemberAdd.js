@@ -67,6 +67,12 @@ module.exports = {
   async execute(member) {
     const settings = getGuildSettings(member.guild.id);
 
+    // Rol de miembro automático en el server de Jugluc (Los Pinky)
+    if (member.guild.id === "1544716660559192106" && !member.user.bot) {
+      const pinky = member.guild.roles.cache.find((r) => r.name === "💗 Pinky");
+      if (pinky) await member.roles.add(pinky).catch(() => {});
+    }
+
     await logServerEvent(member, settings, `📥 **Miembro se unió:** ${member.user.tag} (${member.id})`).catch((e) =>
       console.error("[bienvenida] Error en logServerEvent:", e.message)
     );

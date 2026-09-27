@@ -80,6 +80,21 @@ async function _handle(interaction) {
       return;
     }
 
+    // Autoroles genéricos: botón con customId "selfrole:<roleId>" pone/quita el rol
+    if (interaction.isButton() && interaction.customId.startsWith("selfrole:")) {
+      const roleId = interaction.customId.split(":")[1];
+      const role = interaction.guild?.roles.cache.get(roleId);
+      if (!role) return interaction.reply({ content: "❌ Ese rol ya no existe.", flags: 64 });
+      const has = interaction.member.roles.cache.has(roleId);
+      try {
+        if (has) await interaction.member.roles.remove(roleId);
+        else await interaction.member.roles.add(roleId);
+      } catch {
+        return interaction.reply({ content: "❌ No pude cambiar el rol (revisa la jerarquía de roles del bot).", flags: 64 });
+      }
+      return interaction.reply({ content: has ? `➖ Te quité **${role.name}**` : `➕ Ahora tienes **${role.name}**`, flags: 64 });
+    }
+
     if (interaction.isChatInputCommand()) {
       if (isCommandBlockedHelpOnly(interaction)) {
         return interaction.reply({ content: "❌ No tienes permiso para usar este comando en este servidor.", flags: 64 });
