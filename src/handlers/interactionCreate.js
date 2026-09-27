@@ -81,8 +81,8 @@ async function _handle(interaction) {
     }
 
     if (interaction.isChatInputCommand()) {
-      if (isCommandBlockedHelpOnly(interaction.guildId, interaction.commandName)) {
-        return interaction.reply({ content: "❌ En este servidor solo está disponible el comando `/help`.", flags: 64 });
+      if (isCommandBlockedHelpOnly(interaction)) {
+        return interaction.reply({ content: "❌ No tienes permiso para usar este comando en este servidor.", flags: 64 });
       }
 
       if (isCs2CommandBlockedInGuild(interaction.guildId, interaction.commandName)) {

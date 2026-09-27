@@ -24,8 +24,18 @@ const CS2_MATCHMAKING_COMMANDS = new Set([
 // Servidores donde solo se permite /help
 const HELP_ONLY_GUILDS = new Set(["1544716660559192106"]);
 
-function isCommandBlockedHelpOnly(guildId, commandName) {
-  return HELP_ONLY_GUILDS.has(guildId) && commandName !== "help";
+// En esos servidores, estos comandos de configuración/moderación siguen
+// disponibles para quien tenga permiso de "Gestionar servidor"
+const HELP_ONLY_STAFF_COMMANDS = new Set([
+  "bienvenida", "boost", "probarboost", "purga", "lock", "unlock", "slowmode", "warn",
+  "antiraid", "seguridad", "seguridadinfo", "blacklist", "stickymensaje", "embed",
+  "sorteo", "nivelrol", "faq", "stream"
+]);
+
+function isCommandBlockedHelpOnly(interaction) {
+  if (!HELP_ONLY_GUILDS.has(interaction.guildId) || interaction.commandName === "help") return false;
+  const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
+  return !(isAdmin && HELP_ONLY_STAFF_COMMANDS.has(interaction.commandName));
 }
 
 // Comprueba si el usuario puede escribir/enviar mensajes en el canal actual
