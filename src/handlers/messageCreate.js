@@ -152,6 +152,7 @@ function isTicketChannel(channel) {
 
 async function handleGreeting(message) {
   if (message.author.bot) return;
+  if (message.guild?.id === "1544716660559192106") return; // desactivado en Los Pinky
   if (isTicketChannel(message.channel)) return;
   if (!isGreeting(message.content)) return;
   await message.reply("👋 ¡Hola! ¿Cómo estás?").catch(() => {});
@@ -266,7 +267,9 @@ async function handleXp(message) {
   const result = addXp(message.guild.id, message.author.id, amount);
   if (!result.leveledUp) return;
 
-  await message.channel.send(`🎉 ${message.author} subió a **nivel ${result.level}**!`).catch(() => {});
+  // Si el server tiene un canal "level-up", el aviso va ahí; si no, al canal del mensaje
+  const levelChannel = message.guild.channels.cache.find((c) => c.isTextBased() && c.name.includes("level-up")) ?? message.channel;
+  await levelChannel.send(`🎉 ${message.author} subió a **nivel ${result.level}**!`).catch(() => {});
 
   const levelRoles = getLevelRoles(message.guild.id);
   const roleForLevel = levelRoles.find((r) => r.level === result.level);
