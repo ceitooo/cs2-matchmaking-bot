@@ -76,10 +76,20 @@ async function detectAndStoreKeys(message, settings) {
   await message.channel.send(`✅ ${added.length} llave${added.length === 1 ? "" : "s"} guardada${added.length === 1 ? "" : "s"} con éxito (${summary}).`).catch(() => {});
 }
 
+const botStickyCooldown = new Map(); // channelId -> timestamp del último reenvío disparado por un bot
+
+// Un mensaje del propio bot que es un sticky (el de invitaciones o uno de /stickymensaje)
+function isAnySticky(message) {
+  if (message.author.id !== message.client.user.id) return false;
+  const embed = message.embeds[0];
+  if (!embed) return false;
+  if (embed.title === STICKY_TITLE) return true;
+  const sticky = getStickyMessage(message.channelId);
+  return Boolean(sticky && !embed.title && embed.description?.trim() === sticky.content.trim());
+}
+
 async function ensureInviteStickyBottom(message, settings) {
   if (!settings.invites_channel_id || message.channelId !== settings.invites_channel_id) return;
-  // Solo se ignora el propio sticky (si no, se reenviaría en bucle); los demás mensajes del bot sí lo bajan
-  if (message.author.id === message.client.user.id && message.embeds[0]?.title === STICKY_TITLE) return;
 
   const channelId = message.channelId;
   const lockKey = `invite:${channelId}`;
@@ -112,8 +122,6 @@ async function ensureGenericSticky(message) {
   const channelId = message.channelId;
   const sticky = getStickyMessage(channelId);
   if (!sticky) return;
-  // Solo se ignora el propio sticky (si no, se reenviaría en bucle); los demás mensajes del bot sí lo bajan
-  if (message.author.id === message.client.user.id && message.embeds[0]?.description === sticky.content) return;
 
   if (stickyLock.has(channelId)) return;
   stickyLock.add(channelId);
@@ -328,8 +336,13 @@ module.exports = {
 
     const settings = getGuildSettings(message.guild.id);
 
-    // Los mensajes de bots (incluido este) solo bajan los stickies al final del canal
+    // Los mensajes de bots solo bajan los stickies al final del canal. Nunca se reacciona
+    // a un sticky (de cualquier tipo) y como mucho una vez cada 5s por canal, para evitar bucles.
     if (message.author.bot) {
+      if (isAnySticky(message)) return;
+      const last = botStickyCooldown.get(message.channelId) ?? 0;
+      if (Date.now() - last < 5000) return;
+      botStickyCooldown.set(message.channelId, Date.now());
       await ensureInviteStickyBottom(message, settings);
       await ensureGenericSticky(message);
       return;
