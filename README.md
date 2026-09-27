@@ -60,7 +60,7 @@ npm start
 ## Notificaciones de directos (Twitch, YouTube, Kick, TikTok)
 
 Comando `/stream` (solo staff):
-- `/stream añadir plataforma usuario canal [rol] [mensaje]` — el mensaje admite `{user}`, `{platform}`, `{link}`
+- `/stream añadir plataforma usuario canal [rol] [mensaje]` — el mensaje admite `{user}`, `{platform}`, `{link}` (directo), `{perfil}` (perfil). En `usuario` se puede pegar el link del perfil
 - `/stream quitar`, `/stream lista`, `/stream probar`
 
 El bot revisa cada minuto (TikTok cada ~3 min). YouTube avisa directos y videos nuevos. YouTube y TikTok no necesitan claves.

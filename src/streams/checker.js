@@ -62,7 +62,7 @@ function buildLiveMessage(sub, result, { test = false } = {}) {
     new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Ver directo").setURL(live.url)
   );
   const mention = sub.role_id ? (sub.role_id === sub.guild_id ? "@everyone " : `<@&${sub.role_id}> `) : "";
-  const text = (sub.message || "{user} está en directo en {platform}!").replace(/{user}/g, name).replace(/{platform}/g, p.name).replace(/{link}/g, live.url);
+  const text = (sub.message || "{user} está en directo en {platform}!").replace(/{user}/g, name).replace(/{platform}/g, p.name).replace(/{link}/g, live.url).replace(/{perfil}/g, p.profile(sub.username));
   return { content: `${mention}${p.emoji} ${text}`, embeds: [embed], components: [row], allowedMentions: { parse: ["roles", "everyone"] } };
 }
 

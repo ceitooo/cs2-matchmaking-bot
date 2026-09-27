@@ -6,7 +6,8 @@ const { addSub, removeSub, listSubs, buildLiveMessage, buildVideoMessage } = req
 const platformChoices = Object.entries(PLATFORMS).map(([value, p]) => ({ name: p.name, value }));
 
 function normalize(platform, username) {
-  let u = username.trim().replace(/^https?:\/\/\S+?\//, "").replace(/\/.*$/, "");
+  // Acepta el usuario o el link del perfil (tiktok.com/@x, twitch.tv/x, youtube.com/@x, kick.com/x)
+  let u = username.trim().replace(/^(https?:\/\/)?(www\.|m\.)?[\w.-]+\.(com|tv)\//i, "").replace(/[/?#].*$/, "");
   if (platform === "youtube") return u.startsWith("UC") ? u : "@" + u.replace(/^@/, "");
   return u.replace(/^@/, "").toLowerCase();
 }
@@ -20,12 +21,12 @@ module.exports = {
         .setName("añadir")
         .setDescription("Avisar cuando una cuenta empiece directo (o suba video en YouTube)")
         .addStringOption((o) => o.setName("plataforma").setDescription("Plataforma").setRequired(true).addChoices(...platformChoices))
-        .addStringOption((o) => o.setName("usuario").setDescription("Usuario tal cual aparece en la plataforma").setRequired(true))
+        .addStringOption((o) => o.setName("usuario").setDescription("Usuario o link del perfil").setRequired(true))
         .addChannelOption((o) =>
           o.setName("canal").setDescription("Canal donde avisar").setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
         )
         .addRoleOption((o) => o.setName("rol").setDescription("Rol a mencionar (opcional)"))
-        .addStringOption((o) => o.setName("mensaje").setDescription("Texto personalizado. Usa {user}, {platform}, {link}"))
+        .addStringOption((o) => o.setName("mensaje").setDescription("Texto personalizado. Usa {user}, {platform}, {link} (directo), {perfil}"))
     )
     .addSubcommand((s) =>
       s
