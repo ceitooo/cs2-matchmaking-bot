@@ -32,8 +32,15 @@ const HELP_ONLY_STAFF_COMMANDS = new Set([
   "sorteo", "nivelrol", "faq", "stream"
 ]);
 
+// Comandos de diversión/utilidad abiertos a todos los miembros en esos servidores
+const HELP_ONLY_PUBLIC_COMMANDS = new Set([
+  "help", "8ball", "afk", "aura", "cat", "dado", "deepfry", "hug", "jail", "kiss", "magik",
+  "moneda", "pat", "profile", "petpet", "rainbow", "rip", "shipeo", "slap", "spin",
+  "trigger", "triggered", "wanted", "wasted", "traducir", "recordarme"
+]);
+
 function isCommandBlockedHelpOnly(interaction) {
-  if (!HELP_ONLY_GUILDS.has(interaction.guildId) || interaction.commandName === "help") return false;
+  if (!HELP_ONLY_GUILDS.has(interaction.guildId) || HELP_ONLY_PUBLIC_COMMANDS.has(interaction.commandName)) return false;
   const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
   return !(isAdmin && HELP_ONLY_STAFF_COMMANDS.has(interaction.commandName));
 }
