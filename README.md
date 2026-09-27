@@ -56,3 +56,21 @@ npm start
 - La base de datos es SQLite local (`data/matchmaking.db`), usando el módulo nativo `node:sqlite` (requiere Node 22.5+, sin compilación).
 - El tamaño de cola (10 jugadores) se puede cambiar en `src/utils/matchmaking.js` (`QUEUE_SIZE`).
 - Las stats de CS2 vía Steam Web API solo se muestran si el perfil del jugador es público.
+
+## Notificaciones de directos (Twitch, YouTube, Kick, TikTok)
+
+Comando `/stream` (solo staff):
+- `/stream añadir plataforma usuario canal [rol] [mensaje]` — el mensaje admite `{user}`, `{platform}`, `{link}`
+- `/stream quitar`, `/stream lista`, `/stream probar`
+
+El bot revisa cada minuto (TikTok cada ~3 min). YouTube avisa directos y videos nuevos. YouTube y TikTok no necesitan claves.
+
+Variables necesarias en el `.env` / panel del hosting:
+```
+TWITCH_CLIENT_ID=
+TWITCH_CLIENT_SECRET=
+KICK_CLIENT_ID=
+KICK_CLIENT_SECRET=
+```
+- **Twitch:** https://dev.twitch.tv/console → Registrar aplicación (redirect `http://localhost`, cliente Confidencial) → Administrar → copiar ID y "Nuevo secreto".
+- **Kick:** https://kick.com/settings/developer → Create new app (redirect `http://localhost`) → copiar Client ID y Secret.

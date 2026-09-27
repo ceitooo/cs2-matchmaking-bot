@@ -5,6 +5,7 @@ const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const { startSteamAuthServer } = require("./steam/server");
 const { startIpnServer, setClient: setIpnClient } = require("./sales/paypalIpn");
 const { startRobloxChecker, setCheckerClient } = require("./sales/robloxChecker");
+const { startStreamChecker } = require("./streams/checker");
 
 const client = new Client({
   intents: [
@@ -40,4 +41,5 @@ setIpnClient(client);
 startIpnServer();
 setCheckerClient(client);
 startRobloxChecker();
+startStreamChecker(client);
 client.login(process.env.DISCORD_TOKEN);
