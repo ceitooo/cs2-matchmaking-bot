@@ -267,9 +267,9 @@ async function handleXp(message) {
   const result = addXp(message.guild.id, message.author.id, amount);
   if (!result.leveledUp) return;
 
-  // Si el server tiene un canal "level-up", el aviso va ahí; si no, al canal del mensaje
-  const levelChannel = message.guild.channels.cache.find((c) => c.isTextBased() && c.name.includes("level-up")) ?? message.channel;
-  await levelChannel.send(`🎉 ${message.author} subió a **nivel ${result.level}**!`).catch(() => {});
+  // El aviso solo se manda en el canal "level-up" del server; si no existe, no se avisa
+  const levelChannel = message.guild.channels.cache.find((c) => c.isTextBased() && c.name.includes("level-up"));
+  if (levelChannel) await levelChannel.send(`🎉 ${message.author} subió a **nivel ${result.level}**!`).catch(() => {});
 
   const levelRoles = getLevelRoles(message.guild.id);
   const roleForLevel = levelRoles.find((r) => r.level === result.level);
