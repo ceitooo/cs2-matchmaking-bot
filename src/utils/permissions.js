@@ -34,7 +34,7 @@ const HELP_ONLY_STAFF_COMMANDS = new Set([
 
 // Comandos de diversión/utilidad abiertos a todos los miembros en esos servidores
 const HELP_ONLY_PUBLIC_COMMANDS = new Set([
-  "help", "8ball", "afk", "aura", "cat", "dado", "deepfry", "hug", "jail", "kiss", "magik",
+  "help", "rank", "8ball", "afk", "aura", "cat", "dado", "deepfry", "hug", "jail", "kiss", "magik",
   "moneda", "pat", "profile", "petpet", "rainbow", "rip", "shipeo", "slap", "spin",
   "trigger", "triggered", "wanted", "wasted", "traducir", "recordarme"
 ]);
