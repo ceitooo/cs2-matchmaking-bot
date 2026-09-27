@@ -21,6 +21,13 @@ const CS2_MATCHMAKING_COMMANDS = new Set([
   "resultado"
 ]);
 
+// Servidores donde solo se permite /help
+const HELP_ONLY_GUILDS = new Set(["1544716660559192106"]);
+
+function isCommandBlockedHelpOnly(guildId, commandName) {
+  return HELP_ONLY_GUILDS.has(guildId) && commandName !== "help";
+}
+
 // Comprueba si el usuario puede escribir/enviar mensajes en el canal actual
 function canWriteInChannel(interaction) {
   if (!interaction.channel || !interaction.member) return true;
@@ -68,6 +75,7 @@ function isMemberAuthorizedInSpecialGuild(interaction) {
 }
 
 module.exports = {
+  isCommandBlockedHelpOnly,
   isStaffOrCeito,
   isCeitoOrDeveloper,
   isHighestRoleOrCeito,

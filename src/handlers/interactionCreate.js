@@ -16,7 +16,7 @@ const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearL
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 const { getProducts } = require("../utils/shopBuilder");
 const { createAllianceTicket, createSupportTicket, createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
-const { isStaffOrCeito, isCs2CommandBlockedInGuild, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
+const { isStaffOrCeito, isCs2CommandBlockedInGuild, isCommandBlockedHelpOnly, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
 const { pickWinners } = require("../utils/giveawayChecker");
 const { refreshStockPanel } = require("../commands/stock");
 const {
@@ -81,6 +81,10 @@ async function _handle(interaction) {
     }
 
     if (interaction.isChatInputCommand()) {
+      if (isCommandBlockedHelpOnly(interaction.guildId, interaction.commandName)) {
+        return interaction.reply({ content: "❌ En este servidor solo está disponible el comando `/help`.", flags: 64 });
+      }
+
       if (isCs2CommandBlockedInGuild(interaction.guildId, interaction.commandName)) {
         return interaction.reply({ content: "❌ Los comandos de Counter-Strike y Matchmaking están desactivados en este servidor.", flags: 64 });
       }
