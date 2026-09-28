@@ -20,19 +20,46 @@ async function getOrCreateVerifiedRole(guild) {
   return role;
 }
 
+async function sendVerificationLog(guild, text) {
+  const settings = getGuildSettings(guild.id);
+  let logChannel = settings.log_verifications_channel_id
+    ? await guild.channels.fetch(settings.log_verifications_channel_id).catch(() => null)
+    : null;
+  if (!logChannel) {
+    await guild.channels.fetch().catch(() => {});
+    logChannel = guild.channels.cache.find((c) => c.isTextBased() && c.name.includes("verificaciones-logs")) ?? null;
+  }
+  if (!logChannel?.isTextBased()) {
+    console.error("[verificacion] No encontré el canal de logs de verificaciones");
+    return;
+  }
+  await logChannel.send(text).catch((e) => console.error("[verificacion] No pude enviar el log:", e.message));
+}
+
 async function completeVerification(client, discordUserId, steamId) {
   const guildId = process.env.GUILD_ID;
   if (!guildId) return;
 
   const guild = await client.guilds.fetch(guildId).catch(() => null);
-  if (!guild) return;
+  if (!guild) {
+    console.error(`[verificacion] No encontré el server ${guildId}`);
+    return;
+  }
 
   const member = await guild.members.fetch(discordUserId).catch(() => null);
-  if (!member) return;
+  if (!member) {
+    await sendVerificationLog(guild, `⚠️ Se vinculó Steam (${steamId}) pero el usuario ${discordUserId} no está en el server.`);
+    return;
+  }
 
   const profile = await fetchSteamProfile(steamId).catch(() => null);
   const playtimeMinutes = await fetchCs2PlaytimeMinutes(steamId).catch(() => null);
-  const smurfFlags = evaluateSmurfRisk(profile, playtimeMinutes);
+  let smurfFlags = [];
+  try {
+    smurfFlags = evaluateSmurfRisk(profile, playtimeMinutes);
+  } catch (e) {
+    console.error("[verificacion] Error evaluando smurf:", e.message);
+  }
   const steamName = profile?.personaname ?? null;
 
   if (steamName) {
@@ -50,6 +77,7 @@ async function completeVerification(client, discordUserId, steamId) {
     await verifyChannel.permissionOverwrites.edit(member.id, { ViewChannel: false }).catch(() => {});
   }
 
+  try {
   const embed = new EmbedBuilder()
     .setTitle("✅ Cuenta de Steam vinculada")
     .setColor(VERIFIED_ROLE_COLOR)
@@ -69,18 +97,17 @@ async function completeVerification(client, discordUserId, steamId) {
   }
 
   await member.send({ embeds: [embed] }).catch(() => {});
-
-  const settings = getGuildSettings(guild.id);
-  if (settings.log_verifications_channel_id) {
-    const logChannel = await guild.channels.fetch(settings.log_verifications_channel_id).catch(() => null);
-    if (logChannel?.isTextBased()) {
-      await logChannel
-        .send(
-          `✅ **Cuenta de Steam vinculada**\nDiscord: ${member.user.tag} (${member.id})\nSteam: ${steamName ?? "Sin nombre"} (${steamId})${smurfFlags.length ? `\n⚠️ Señales: ${smurfFlags.join(", ")}` : ""}`
-        )
-        .catch(() => {});
-    }
+  } catch (e) {
+    console.error("[verificacion] Error armando/enviando el DM:", e.message);
   }
+
+  await sendVerificationLog(
+    guild,
+    `✅ **Cuenta de Steam vinculada**
+Discord: ${member.user.tag} (${member.id})
+Steam: ${steamName ?? "Sin nombre"} (${steamId})${smurfFlags.length ? `
+⚠️ Señales: ${smurfFlags.join(", ")}` : ""}`
+  );
 }
 
 module.exports = { completeVerification, VERIFIED_ROLE_NAME };
