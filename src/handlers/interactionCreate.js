@@ -15,6 +15,7 @@ const { buildLobbyPanel, MAX_PER_TEAM } = require("../utils/panelBuilder");
 const { checkAllReadyAndSyncChannels, finalizeLobby, scheduleLobbyTimers, clearLobbyTimers } = require("../utils/matchmaking");
 const { joinQuickQueue, leaveQuickQueue } = require("../utils/quickQueue");
 const { getProducts } = require("../utils/shopBuilder");
+const USER_ROLE_ID = "1339103137901969439";
 const { createAllianceTicket, createSupportTicket, createProductTicket, closeTicket, pingRoleIds, canPing, registerPing } = require("../utils/tickets");
 const { isStaffOrCeito, isCs2CommandBlockedInGuild, isCommandBlockedHelpOnly, isMemberAuthorizedInSpecialGuild } = require("../utils/permissions");
 const { pickWinners } = require("../utils/giveawayChecker");
@@ -239,6 +240,16 @@ async function _handle(interaction) {
       });
       if (!result) return interaction.editReply({ content: "No pude crear el ticket. Avisale a un staff." });
       return interaction.editReply({ content: result.created ? `✅ Ticket creado: ${result.channel}` : `Ya tenés un ticket de alianza abierto: ${result.channel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === "server_verify") {
+      const role = interaction.guild.roles.cache.get(USER_ROLE_ID);
+      if (!role) return interaction.reply({ content: "No encontré el rol de verificación. Avisale a un staff.", flags: 64 });
+      if (interaction.member.roles.cache.has(role.id)) {
+        return interaction.reply({ content: "Ya estás verificado.", flags: 64 });
+      }
+      await interaction.member.roles.add(role, "Verificación por botón").catch(() => null);
+      return interaction.reply({ content: "✅ ¡Listo! Ya tenés acceso a todos los canales.", flags: 64 });
     }
 
     if (interaction.isButton() && interaction.customId === "support_ticket_open") {
