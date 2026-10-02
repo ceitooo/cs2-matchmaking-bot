@@ -6,6 +6,7 @@ const { startSteamAuthServer } = require("./steam/server");
 const { startIpnServer, setClient: setIpnClient } = require("./sales/paypalIpn");
 const { startRobloxChecker, setCheckerClient } = require("./sales/robloxChecker");
 const { startStreamChecker } = require("./streams/checker");
+const { startOffsetsChecker } = require("./offsets/checker");
 
 const client = new Client({
   intents: [
@@ -42,4 +43,5 @@ startIpnServer();
 setCheckerClient(client);
 startRobloxChecker();
 startStreamChecker(client);
+startOffsetsChecker(client);
 client.login(process.env.DISCORD_TOKEN);
