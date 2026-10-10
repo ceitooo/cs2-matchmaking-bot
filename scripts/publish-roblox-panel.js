@@ -4,7 +4,7 @@ const { buildSalesPanel } = require("../src/sales/robloxPanel");
 const { getGuildSettings, updateGuildSettings } = require("../src/db/database");
 
 const GUILD_ID   = process.env.GUILD_ID;
-const CHANNEL_ID = "1551930389931630662"; // #buy-ceitus-roblox-external
+const CHANNEL_ID = "1557937963370025012"; // #buy-ceitus-roblox-external
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 

@@ -1,5 +1,5 @@
 {
-  "name": "cs2-matchmaking-bot",
+  "name": "ceitus-bot",
   "version": "1.0.0",
   "description": "Bot de Discord para matchmaking estilo CS2 con paneles, cola y ELO",
   "main": "src/index.js",
