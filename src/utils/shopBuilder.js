@@ -4,6 +4,104 @@ const { db } = require("../db/database");
 const DEFAULT_PRODUCTS = {
   1: {
     id: 1,
+    name: "Desarrollo de Bot de Discord",
+    category: "Discord",
+    price: "A consultar según funciones",
+    description: "🤖 **Bots Profesionales y Personalizados de Discord**\n\n" +
+      "• Moderación automática, filtros, anti-raid y protección anti-bots\n" +
+      "• Sistemas de niveles, XP, juegos, apuestas, logs y auto-respuestas interactivas\n" +
+      "• Sistema de música en alta fidelidad y canales dedicados\n" +
+      "• Notificaciones automáticas de redes sociales (YouTube, Twitch, Kick, TikTok)\n" +
+      "• Personalización completa: avatar, banner, nombre y branding de tu servidor\n" +
+      "• Opciones de hosting 24/7 y mantenimiento incluidos"
+  },
+  2: {
+    id: 2,
+    name: "Comprar licencia CeitoTweaks",
+    category: "CeitoTweaks",
+    price: "Planes por tiempo y de por vida",
+    description: "⚡ **CeitoTweaks Suite Gamer & Optimización PC**\n\n" +
+      "• Desbloqueo total de +390 tweaks del sistema y optimizaciones competitivas\n" +
+      "• **Modo Juego CeitoTweaks:** máxima prioridad de CPU/GPU y vaciado de RAM en espera\n" +
+      "• **CeitoSound:** cancelación de ruido con IA y ecualizador paramétrico de 10 bandas\n" +
+      "• **CeitoVIA:** generador y escalador de imágenes por IA local\n" +
+      "• **CeitoAim:** torneos de puntería, duelos 1v1 y tabla global con rangos\n" +
+      "• **Ceitotify Premium:** temas visuales exclusivos, extras y sin publicidad\n" +
+      "• **Nube CeitoTweaks:** backups automáticos de tus configuraciones en la nube\n" +
+      "• **Insignia ⭐ Premium dorada** y rol VIP en la comunidad"
+  },
+  3: {
+    id: 3,
+    name: "Optimización iOS",
+    category: "Optimización",
+    price: "2 USD",
+    description: "🍏 **Optimización y liberación de memoria RAM para iPhone / iPad**\n\n" +
+      "• Liberación de memoria RAM para mayor fluidez del sistema operativo\n" +
+      "• Reducción de cierres inesperados y mejor respuesta táctil en juegos\n" +
+      "• Ajustes y optimización directa\n\n" +
+      "💰 **Precio:** 2 USD"
+  },
+  4: {
+    id: 4,
+    name: "Creación de Servidores Discord",
+    category: "Discord",
+    price: "Negociable según requerimientos",
+    description: "🛠️ **Servicio Profesional de Creación de Servidores desde 0**\n\n" +
+      "• Personalización completa del servidor adaptada a tu temática o comunidad\n" +
+      "• Estructura organizada de canales y roles estéticos\n" +
+      "• Métodos de seguridad avanzados y sistemas anti-raid\n" +
+      "• Configuración de bots esenciales y auto-respuestas\n" +
+      "• Roles, canales y permisos asegurados profesionalmente\n\n" +
+      "💰 **Precio:** Negociable según el nivel de personalización que necesites"
+  },
+  5: {
+    id: 5,
+    name: "Discord Decoraciones, Efectos y Marcos",
+    category: "Discord",
+    price: "$3.80 - $5.99 USD por Frame",
+    description: "✨ **Decoraciones, efectos de avatar y marcos permanentes para Discord**\n\n" +
+      "• 💎 Acceso de por vida: ¡tuyo para siempre!\n" +
+      "• 🔗 Entrega rápida mediante **Gift Link directo** (sin necesidad de iniciar sesión ni dar contraseñas)\n" +
+      "• ❌ **No se requiere Nitro**: funciona perfectamente sin suscripción a Nitro\n" +
+      "• Frames nuevos, animaciones de avatar y placas decorativas\n\n" +
+      "💰 **Precio:** $3.80 - $5.99 USD por Frame / Efecto"
+  },
+  6: {
+    id: 6,
+    name: "Optimización PC",
+    category: "Optimización",
+    price: "Consultar precio",
+    description: "💻 **Optimización integral de Windows y PC para Gaming**\n\n" +
+      "• Latencia ultra baja de entrada (input lag de teclado y mouse)\n" +
+      "• Optimización profunda de procesos de Windows, telemetría y servicios innecesarios\n" +
+      "• Configuración de drivers de GPU, afinidad de CPU y energía de máximo rendimiento\n" +
+      "• Estabilidad de FPS en juegos competitivos (CS2, Valorant, Fortnite, Warzone)"
+  },
+  7: {
+    id: 7,
+    name: "Optimización Android",
+    category: "Optimización",
+    price: "5 USD",
+    description: "📱 **La mejor aplicación de optimización premium para Android (+99% rendimiento)**\n\n" +
+      "• 🚀 CPU Boost y desbloqueo de rendimiento\n" +
+      "• 🚀 Liberador de memoria RAM en segundo plano\n" +
+      "• 🚀 Optimización de batería y temperaturas\n" +
+      "• 🚀 Máxima fluidez y estabilidad de FPS en juegos (Free Fire, Warzone, CoD Mobile)\n\n" +
+      "💰 **Precio:** 5 USD"
+  },
+  8: {
+    id: 8,
+    name: "Spoof de componentes",
+    category: "Optimización",
+    price: "15 USD",
+    description: "🔧 **Renovación y cambio de identificadores de PC**\n\n" +
+      "• Configuración y renovación de identificadores de hardware en tu equipo para mantenimiento o pruebas\n" +
+      "• Proceso rápido y compatible con múltiples arquitecturas de PC\n" +
+      "• ⚠️ **Requisito obligatorio:** El equipo debe ser reinstalado de fábrica (instalación limpia de Windows)\n\n" +
+      "💰 **Precio:** 15 USD"
+  },
+  9: {
+    id: 9,
     name: "Netflix Premium (Perfil Propio)",
     category: "Streaming",
     price: "10.09 USD (Oficial: 21.99 USD)",
@@ -19,8 +117,8 @@ const DEFAULT_PRODUCTS = {
       "💵 **Página oficial:** 21.99 USD\n" +
       "🔥 **Mi precio:** 10.09 USD"
   },
-  2: {
-    id: 2,
+  10: {
+    id: 10,
     name: "Disney+ Premium (Perfil Propio)",
     category: "Streaming",
     price: "14.99 USD (Oficial: 31.99 USD)",
@@ -36,23 +134,19 @@ const DEFAULT_PRODUCTS = {
       "💵 **Precio oficial:** 31.99 USD\n" +
       "🔥 **Nuestro precio:** 14.99 USD"
   },
-  3: {
-    id: 3,
-    name: "Comprar licencia CeitoTweaks",
-    category: "CeitoTweaks",
-    price: "Planes por tiempo y de por vida",
-    description: "⚡ **CeitoTweaks Suite Gamer & Optimización PC**\n\n" +
-      "• Desbloqueo total de +390 tweaks del sistema y optimizaciones competitivas\n" +
-      "• **Modo Juego CeitoTweaks:** máxima prioridad de CPU/GPU y vaciado de RAM en espera\n" +
-      "• **CeitoSound:** cancelación de ruido con IA y ecualizador paramétrico de 10 bandas\n" +
-      "• **CeitoVIA:** generador y escalador de imágenes por IA local\n" +
-      "• **CeitoAim:** torneos de puntería, duelos 1v1 y tabla global con rangos\n" +
-      "• **Ceitotify Premium:** temas visuales exclusivos, extras y sin publicidad\n" +
-      "• **Nube CeitoTweaks:** backups automáticos de tus configuraciones en la nube\n" +
-      "• **Insignia ⭐ Premium dorada** y rol VIP en la comunidad"
+  11: {
+    id: 11,
+    name: "Números Virtuales Verificados",
+    category: "Otros",
+    price: "Desde $4.000 ARS",
+    description: "💎 **Números Virtuales Verificados y Funcionales**\n\n" +
+      "• Ideales para activaciones, registros y validaciones (WhatsApp, Telegram, Discord, etc.)\n" +
+      "• Países disponibles: Argentina, Chile, Colombia, Brasil, USA, México, Perú, Uruguay, Japón y más\n" +
+      "• Servicio confiable, rápido y con atención personalizada\n\n" +
+      "💰 **Precios en ARS:** desde $4.000 ARS según el país solicitado"
   },
-  4: {
-    id: 4,
+  12: {
+    id: 12,
     name: "Boost de Server (14 Boosts - Nivel 3)",
     category: "Discord",
     price: "10 USD (1 mes)",
@@ -64,89 +158,6 @@ const DEFAULT_PRODUCTS = {
       "• 🖼️ Banner del server animado, invitación personalizada y URL vanity\n" +
       "• 🎬 Transmisiones en vivo en 1080p 60fps\n" +
       "• 🏅 Rol e insignia de booster para quien boostea"
-  },
-  5: {
-    id: 5,
-    name: "Optimización Android",
-    category: "Optimización",
-    price: "5 USD",
-    description: "📱 **La mejor aplicación de optimización premium para Android (+99% rendimiento)**\n\n" +
-      "• 🚀 CPU Boost y desbloqueo de rendimiento\n" +
-      "• 🚀 Liberador de memoria RAM en segundo plano\n" +
-      "• 🚀 Optimización de batería y temperaturas\n" +
-      "• 🚀 Máxima fluidez y estabilidad de FPS en juegos (Free Fire, Warzone, CoD Mobile)\n\n" +
-      "💰 **Precio:** 5 USD"
-  },
-  6: {
-    id: 6,
-    name: "Optimización iOS",
-    category: "Optimización",
-    price: "2 USD",
-    description: "🍏 **Optimización y liberación de memoria RAM para iPhone / iPad**\n\n" +
-      "• Liberación de memoria RAM para mayor fluidez del sistema operativo\n" +
-      "• Reducción de cierres inesperados y mejor respuesta táctil en juegos\n" +
-      "• Ajustes y optimización directa\n\n" +
-      "💰 **Precio:** 2 USD"
-  },
-  7: {
-    id: 7,
-    name: "Spoof de componentes",
-    category: "Optimización",
-    price: "15 USD",
-    description: "🔧 **Renovación y cambio de identificadores de PC**\n\n" +
-      "• Configuración y renovación de identificadores de hardware en tu equipo para mantenimiento o pruebas\n" +
-      "• Proceso rápido y compatible con múltiples arquitecturas de PC\n" +
-      "• ⚠️ **Requisito obligatorio:** El equipo debe ser reinstalado de fábrica (instalación limpia de Windows)\n\n" +
-      "💰 **Precio:** 15 USD"
-  },
-  8: {
-    id: 8,
-    name: "Discord Decoraciones, Efectos y Marcos",
-    category: "Discord",
-    price: "$3.80 - $5.99 USD por Frame",
-    description: "✨ **Decoraciones, efectos de avatar y marcos permanentes para Discord**\n\n" +
-      "• 💎 Acceso de por vida: ¡tuyo para siempre!\n" +
-      "• 🔗 Entrega rápida mediante **Gift Link directo** (sin necesidad de iniciar sesión ni dar contraseñas)\n" +
-      "• ❌ **No se requiere Nitro**: funciona perfectamente sin suscripción a Nitro\n" +
-      "• Frames nuevos, animaciones de avatar y placas decorativas\n\n" +
-      "💰 **Precio:** $3.80 - $5.99 USD por Frame / Efecto"
-  },
-  9: {
-    id: 9,
-    name: "Desarrollo de Bot de Discord",
-    category: "Discord",
-    price: "A consultar según funciones",
-    description: "🤖 **Bots Profesionales y Personalizados de Discord**\n\n" +
-      "• Moderación automática, filtros, anti-raid y protección anti-bots\n" +
-      "• Sistemas de niveles, XP, juegos, apuestas, logs y auto-respuestas interactivas\n" +
-      "• Sistema de música en alta fidelidad y canales dedicados\n" +
-      "• Notificaciones automáticas de redes sociales (YouTube, Twitch, Kick, TikTok)\n" +
-      "• Personalización completa: avatar, banner, nombre y branding de tu servidor\n" +
-      "• Opciones de hosting 24/7 y mantenimiento incluidos"
-  },
-  10: {
-    id: 10,
-    name: "Creación de Servidores Discord",
-    category: "Discord",
-    price: "Negociable según requerimientos",
-    description: "🛠️ **Servicio Profesional de Creación de Servidores desde 0**\n\n" +
-      "• Personalización completa del servidor adaptada a tu temática o comunidad\n" +
-      "• Estructura organizada de canales y roles estéticos\n" +
-      "• Métodos de seguridad avanzados y sistemas anti-raid\n" +
-      "• Configuración de bots esenciales y auto-respuestas\n" +
-      "• Roles, canales y permisos asegurados profesionalmente\n\n" +
-      "💰 **Precio:** Negociable según el nivel de personalización que necesites"
-  },
-  11: {
-    id: 11,
-    name: "Números Virtuales Verificados",
-    category: "Otros",
-    price: "Desde $4.000 ARS",
-    description: "💎 **Números Virtuales Verificados y Funcionales**\n\n" +
-      "• Ideales para activaciones, registros y validaciones (WhatsApp, Telegram, Discord, etc.)\n" +
-      "• Países disponibles: Argentina, Chile, Colombia, Brasil, USA, México, Perú, Uruguay, Japón y más\n" +
-      "• Servicio confiable, rápido y con atención personalizada\n\n" +
-      "💰 **Precios en ARS:** desde $4.000 ARS según el país solicitado"
   }
 };
 
