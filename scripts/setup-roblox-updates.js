@@ -4,7 +4,7 @@ const { updateGuildSettings } = require("../src/db/database");
 
 const GUILD_ID        = process.env.GUILD_ID;
 const SALES_CATEGORY  = "1542357676439248976"; // 🛒・Ceitus Sales
-const PANEL_CHANNEL   = "1551930389931630662"; // #buy-ceitus-roblox-external
+const PANEL_CHANNEL   = "1557937963370025012"; // #buy-ceitus-roblox-external
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 

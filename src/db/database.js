@@ -575,6 +575,10 @@ function countActiveSubscriptions(guildId) {
   return db.prepare("SELECT COUNT(*) as count FROM subscriptions WHERE guild_id = ? AND expires_at > ?").get(guildId, Date.now()).count;
 }
 
+function getUserSubscriptions(guildId, userId) {
+  return db.prepare("SELECT * FROM subscriptions WHERE guild_id = ? AND user_id = ? AND expires_at > ? ORDER BY expires_at ASC").all(guildId, userId, Date.now());
+}
+
 function addGiveaway(guildId, channelId, messageId, prize, winnersCount, endsAt, createdBy) {
   db.prepare(
     "INSERT INTO giveaways (guild_id, channel_id, message_id, prize, winners_count, ends_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -889,5 +893,6 @@ module.exports = {
   deleteSubscription,
   getSubscriptionsToNotify,
   markSubscriptionNotified,
+  getUserSubscriptions,
   INVITES_PER_REWARD
 };

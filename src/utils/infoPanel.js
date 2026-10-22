@@ -19,7 +19,7 @@ function buildInfoEmbed(status = "activo", version = null) {
     : "🔴 **En mantenimiento** — Actualizando para la nueva versión de Roblox...";
 
   const embed = new EmbedBuilder()
-    .setTitle("🎮  Ceitus v1.0.5  —  Roblox External")
+    .setTitle("🎮  Ceitus v1.0.9  —  Roblox External")
     .setColor(isActive ? 0x4488FF : 0xFF8800)
     .setDescription("Cheat externo para Roblox. No inyecta en el proceso, usa lectura de memoria.")
     .addFields(
@@ -35,8 +35,9 @@ function buildInfoEmbed(status = "activo", version = null) {
       {
         name: "🎯  Aimbot",
         value:
-          "• Tecla configurable\n• Suavizado ajustable (sin rebote)\n• Hueso objetivo: Cabeza / Cuello / Pecho\n" +
-          "• FOV ajustable con círculo visual\n• Distancia máxima configurable\n• Predicción de movimiento\n" +
+          "• Tecla configurable\n• Suavizado ajustable (sin rebote) — **3x más rápido**\n• Hueso objetivo: Cabeza / Cuello / Pecho\n" +
+          "• FOV ajustable con círculo visual (sigue el cursor)\n• **Snap indicator** — punto + línea a la cabeza del target\n" +
+          "• Distancia máxima configurable\n• Predicción de movimiento\n" +
           "• Filtro de equipo\n• Filtro de usuarios específicos",
         inline: false
       },
@@ -44,9 +45,11 @@ function buildInfoEmbed(status = "activo", version = null) {
         name: "⚡  Extras",
         value:
           "• **Triggerbot** — disparo automático al apuntar\n• **Bunny Hop** — salto automático\n" +
+          "• **🦅 Fly** — vuelo con `F` (subir) / `C` (bajar), velocidad configurable\n" +
+          "• **👻 Noclip** — atravesá paredes\n" +
           "• **Radar** — mini-mapa con enemigos\n• **Crosshair** — mira personalizada (3 estilos)\n" +
           "• **Hitmarker** — indicador de impacto\n• **Killfeed** — registro de eliminaciones\n" +
-          "• **Anti-AFK** — evita que Roblox te saque por inactividad\n• **Anti-Flash / Anti-Smoke**",
+          "• **Anti-AFK** — funciona en segundo plano sin enfocar Roblox\n• **Anti-Flash / Anti-Smoke**",
         inline: false
       },
       {
@@ -56,7 +59,7 @@ function buildInfoEmbed(status = "activo", version = null) {
       },
       {
         name: "⌨️  Teclas por defecto",
-        value: "• `INSERT` — abrir/cerrar panel\n• `END` — Panic (oculta todo)\n• `X` — activar aimbot",
+        value: "• `INSERT` — abrir/cerrar panel\n• `END` — Panic (oculta todo)\n• `X` — activar aimbot\n• `F` — subir (Fly)\n• `C` — bajar (Fly)",
         inline: false
       },
       {

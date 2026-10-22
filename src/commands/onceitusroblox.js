@@ -61,7 +61,7 @@ module.exports = {
         .setDescription(
           `✅ **Ceitus Roblox External ya está activo** y actualizado para la nueva versión de Roblox.\n\n` +
           `🔄 **Versión Roblox:** \`${version ?? "desconocida"}\`\n\n` +
-          `Podés comprar tu acceso en <#${settings.roblox_panel_channel_id ?? "el canal de ventas"}> 🛒`
+          `Podés comprar tu acceso en ${settings.roblox_panel_channel_id ? `<#${settings.roblox_panel_channel_id}>` : guild.channels.cache.find(c => c.name === "ceitus-roblox-descargar") ? `<#${guild.channels.cache.find(c => c.name === "ceitus-roblox-descargar").id}>` : "el canal de ventas"} 🛒`
         )
         .setTimestamp();
       await announceCh.send({ embeds: [embed] });
