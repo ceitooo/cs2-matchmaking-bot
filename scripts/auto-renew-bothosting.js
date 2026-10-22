@@ -14,10 +14,13 @@ const BILLINGS_URL = "https://bot-hosting.net/a/billings";
 const DEPLOYMENT_URL = `https://bot-hosting.net/a/d/${DEPLOYMENT_ID}`;
 
 async function sendDiscordWebhook(webhookUrl, { title, description, color, fields = [] }) {
-  if (!webhookUrl) return;
+  if (!webhookUrl) {
+    console.log("[auto-renew] DISCORD_WEBHOOK_URL no configurado, saltando notificación.");
+    return;
+  }
 
   try {
-    const url = new URL(webhookUrl);
+    const url = new URL(webhookUrl.trim());
     const payload = JSON.stringify({
       username: "Bot-Hosting Auto-Renew",
       avatar_url: "https://bot-hosting.net/favicon.ico",
@@ -41,14 +44,22 @@ async function sendDiscordWebhook(webhookUrl, { title, description, color, field
           headers: {
             "Content-Type": "application/json",
             "Content-Length": Buffer.byteLength(payload),
+            "User-Agent": "BotHostingAutoRenew/1.0",
           },
         },
         (res) => {
-          res.on("data", () => {});
-          res.on("end", () => resolve());
+          let body = "";
+          res.on("data", (chunk) => (body += chunk));
+          res.on("end", () => {
+            console.log(`[auto-renew] Webhook respuesta HTTP ${res.statusCode}`);
+            resolve();
+          });
         }
       );
-      req.on("error", reject);
+      req.on("error", (err) => {
+        console.error("[auto-renew] Error de conexión webhook:", err.message);
+        resolve();
+      });
       req.write(payload);
       req.end();
     });
@@ -112,6 +123,12 @@ async function run() {
   console.log("   Bot-Hosting.net Auto-Renew & Power Watcher     ");
   console.log("==================================================");
 
+  if (webhookUrl) {
+    console.log("[auto-renew] Webhook de Discord configurado correctamente.");
+  } else {
+    console.warn("[auto-renew] ADVERTENCIA: DISCORD_WEBHOOK_URL está vacío o no se pasó como env.");
+  }
+
   let playwright;
   try {
     playwright = require("playwright");
@@ -148,6 +165,11 @@ async function run() {
   await context.addCookies(cookies);
   const page = await context.newPage();
 
+  let renewStatusMessage = "Plan Free en cooldown (activo)";
+  let powerStatusMessage = "En línea";
+  let didRenew = false;
+  let didStartBot = false;
+
   try {
     // ----------------------------------------------------
     // FASE 1: Verificar y Renovar Plan Free en /a/billings
@@ -176,14 +198,12 @@ async function run() {
 
     const pageBodyText = await page.evaluate(() => document.body.innerText || "");
 
-    // Buscar estado de renovación
     const isCooldown = pageBodyText.includes("Tiempo de espera para renovar") ||
                        pageBodyText.includes("Cooldown") ||
                        pageBodyText.includes("Espera para renovar");
 
     console.log(`[auto-renew] ¿Cooldown de renovación activo?: ${isCooldown}`);
 
-    // Buscar botón de renovación
     const renewBtn = await page.$(
       'button:has-text("Renovar"), button:has-text("Renew"), button:has-text("Extender")'
     );
@@ -195,7 +215,6 @@ async function run() {
         await renewBtn.click();
         await page.waitForTimeout(3000);
 
-        // Esperar widget de Cloudflare Turnstile si aparece en el modal
         const turnstileIframe = await page.waitForSelector('iframe[src*="turnstile"], iframe[src*="challenges"]', {
           timeout: 10000,
         }).catch(() => null);
@@ -209,12 +228,11 @@ async function run() {
               if (checkbox) await checkbox.click();
             }
           } catch (e) {
-            console.log("[auto-renew] Turnstile autogestionado por Cloudflare.");
+            console.log("[auto-renew] Turnstile autogestionado.");
           }
           await page.waitForTimeout(5000);
         }
 
-        // Buscar botón de confirmación en modal
         const confirmBtn = await page.$(
           '.modal button:has-text("Renovar"), .modal button:has-text("Confirmar"), button:has-text("Aceptar")'
         );
@@ -223,17 +241,16 @@ async function run() {
           await page.waitForTimeout(4000);
         }
 
-        console.log("[auto-renew] ✅ Intento de renovación completado.");
-        await sendDiscordWebhook(webhookUrl, {
-          title: "🎉 Plan Free de Bot-Hosting Renovado",
-          description: "Se completó la renovación de 4 días adicionales para el servidor.",
-          color: 0x57f287,
-        });
+        console.log("[auto-renew] ✅ Renovación completada (+4 días).");
+        renewStatusMessage = "✅ Renovado exitosamente (+4 días)";
+        didRenew = true;
       } else {
         console.log("[auto-renew] ℹ️ El botón de renovación está deshabilitado temporalmente (cooldown).");
+        renewStatusMessage = "⏳ En cooldown (esperando ventana de renovación)";
       }
     } else {
       console.log("[auto-renew] ℹ️ Plan Free vigente en cooldown. No requiere renovación en este ciclo.");
+      renewStatusMessage = "⏳ En cooldown (servidor activo hasta el 26 oct)";
     }
 
     // ----------------------------------------------------
@@ -264,18 +281,41 @@ async function run() {
         const restartScreenshot = path.join(screenshotsDir, "started-result.png");
         await page.screenshot({ path: restartScreenshot, fullPage: true });
 
-        console.log("[auto-renew] ✅ ceitus-bot ha sido iniciado exitosamente.");
-        await sendDiscordWebhook(webhookUrl, {
-          title: "⚡ ceitus-bot Encendido Automáticamente",
-          description: "El bot estaba en estado 'Detenido' y fue reactivado automáticamente.",
-          color: 0x5865f2,
-        });
+        console.log("[auto-renew] ✅ ceitus-bot ha sido iniciado.");
+        powerStatusMessage = "⚡ Estaba detenido y fue reactivado";
+        didStartBot = true;
       } else {
         console.warn("[auto-renew] No se encontró el botón 'Iniciar'.");
+        powerStatusMessage = "⚠️ Detenido (no se pudo pulsar Iniciar)";
       }
     } else {
       console.log("[auto-renew] 🟢 El bot está EN LÍNEA (Online / Ejecutándose).");
+      powerStatusMessage = "🟢 En línea y funcionando";
     }
+
+    // ----------------------------------------------------
+    // FASE 3: Enviar reporte de estado a Discord
+    // ----------------------------------------------------
+    let embedColor = 0x57f287; // Verde
+    let embedTitle = "🟢 Bot-Hosting: Todo en Orden";
+
+    if (didRenew) {
+      embedTitle = "🎉 Bot-Hosting: Servidor Renovado (+4 Días)";
+      embedColor = 0x57f287;
+    } else if (didStartBot) {
+      embedTitle = "⚡ Bot-Hosting: Bot Reactivado";
+      embedColor = 0x5865f2;
+    }
+
+    await sendDiscordWebhook(webhookUrl, {
+      title: embedTitle,
+      description: "Verificación programada de **Bot-Hosting.net** ejecutada con éxito.",
+      color: embedColor,
+      fields: [
+        { name: "Estado del Bot", value: powerStatusMessage, inline: true },
+        { name: "Estado de Renovación", value: renewStatusMessage, inline: true },
+      ],
+    });
 
   } catch (error) {
     console.error("[auto-renew] ❌ Excepción en ejecución:", error);
