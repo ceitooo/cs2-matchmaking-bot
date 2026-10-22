@@ -150,14 +150,42 @@ const DEFAULT_PRODUCTS = {
     name: "Boost de Server (14 Boosts - Nivel 3)",
     category: "Discord",
     price: "10 USD (1 mes)",
-    description: "🚀 **14 Boosts para tu Servidor de Discord (Nivel 3)**\n\n" +
-      "• Llevá tu servidor al **Nivel 3** de Discord con boosts reales durante todo el mes\n" +
-      "• 🎙️ Calidad de audio de hasta 384 kbps\n" +
-      "• 📁 Subida de archivos de hasta 100 MB para todos los miembros\n" +
-      "• 😎 250 slots de emojis y 60 de stickers personalizados\n" +
-      "• 🖼️ Banner del server animado, invitación personalizada y URL vanity\n" +
-      "• 🎬 Transmisiones en vivo en 1080p 60fps\n" +
-      "• 🏅 Rol e insignia de booster para quien boostea"
+    description: "🚀 **BOOST DE SERVER** 🚀\n\n" +
+      "📈 Llevá tu servidor al **Nivel 3** de Discord con boosts reales durante todo el mes.\n" +
+      "Servicio rápido, seguro y con atención personalizada.\n\n" +
+      "━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "📦 **QUÉ INCLUÍS**\n" +
+      "━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "🚀 **14 boosts** (Nivel 3 del servidor)\n" +
+      "💰 **10 USD**\n" +
+      "📅 Duración: **1 mes**\n\n" +
+      "━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "✨ **BENEFICIOS DEL NIVEL 3**\n" +
+      "━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "🎙️ Calidad de audio de hasta 384 kbps\n" +
+      "📁 Subida de archivos de 100 MB para todos\n" +
+      "😎 250 slots de emojis y 60 de stickers\n" +
+      "🖼️ Banner del server, invitación personalizada y URL vanity\n" +
+      "🎬 Transmisiones en 1080p 60fps\n" +
+      "🏅 Rol e insignia de booster para quien boostea"
+  },
+  13: {
+    id: 13,
+    name: "Diseño y Creación de Páginas Web",
+    category: "Desarrollo",
+    price: "A consultar según proyecto",
+    description: "🌐 **DISEÑO Y CREACIÓN DE PÁGINAS WEB PROFESIONALES** 🌐\n\n" +
+      "💻 Creamos tu página web moderna, rápida y a medida para tu proyecto, comunidad o negocio.\n\n" +
+      "━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "🛠️ **QUÉ INCLUYE**\n" +
+      "━━━━━━━━━━━━━━━━━━━━━━━\n" +
+      "• 🎨 **Diseño Moderno & Responsive:** adaptado perfectamente a celulares, tablets y PC\n" +
+      "• ⚡ **Animaciones y Efectos:** estética gamer, moderna o minimalista según prefieras\n" +
+      "• 🚀 **Velocidad Ultra Rápida:** código limpio optimizado para carga instantánea\n" +
+      "• 🛒 **Landing pages, Portfolios, Tiendas o Dashboards**\n" +
+      "• 🔒 **Hosting y Dominio:** asesoramiento y configuración de SSL gratis\n" +
+      "• 📲 **Botones de contacto directo:** WhatsApp, Discord, redes sociales y links seguros\n\n" +
+      "💰 **Precio:** A convenir según las secciones y funciones que necesites"
   }
 };
 
