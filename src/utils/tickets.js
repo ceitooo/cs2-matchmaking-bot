@@ -68,7 +68,16 @@ async function getOrCreateTicketsCategory(guild) {
   }
 
   const overwrites = [
-    { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    {
+      id: guild.roles.everyone.id,
+      deny: [PermissionFlagsBits.ViewChannel],
+      allow: [
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AddReactions,
+        PermissionFlagsBits.ReadMessageHistory
+      ]
+    },
     ...staffRoleIds(guild).map((id) => ({
       id,
       allow: [
@@ -77,6 +86,7 @@ async function getOrCreateTicketsCategory(guild) {
         PermissionFlagsBits.ManageChannels,
         PermissionFlagsBits.AttachFiles,
         PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AddReactions,
         PermissionFlagsBits.ReadMessageHistory
       ]
     }))
@@ -125,6 +135,7 @@ async function createProductTicket(guild, member, product) {
         PermissionFlagsBits.ManageChannels,
         PermissionFlagsBits.AttachFiles,
         PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AddReactions,
         PermissionFlagsBits.ReadMessageHistory
       ]
     })),
@@ -135,7 +146,8 @@ async function createProductTicket(guild, member, product) {
         PermissionFlagsBits.SendMessages,
         PermissionFlagsBits.ReadMessageHistory,
         PermissionFlagsBits.AttachFiles,
-        PermissionFlagsBits.EmbedLinks
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AddReactions
       ]
     }
   ];
@@ -209,6 +221,7 @@ async function createSimpleTicket(guild, member, type) {
         PermissionFlagsBits.ManageChannels,
         PermissionFlagsBits.AttachFiles,
         PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AddReactions,
         PermissionFlagsBits.ReadMessageHistory
       ]
     })),
@@ -219,7 +232,8 @@ async function createSimpleTicket(guild, member, type) {
         PermissionFlagsBits.SendMessages,
         PermissionFlagsBits.ReadMessageHistory,
         PermissionFlagsBits.AttachFiles,
-        PermissionFlagsBits.EmbedLinks
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AddReactions
       ]
     }
   ];

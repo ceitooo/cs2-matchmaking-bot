@@ -46,7 +46,8 @@ async function openPurchaseTicket(guild, member, planId) {
           PermissionFlagsBits.SendMessages,
           PermissionFlagsBits.ReadMessageHistory,
           PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks
+          PermissionFlagsBits.EmbedLinks,
+          PermissionFlagsBits.AddReactions
         ]
       }
     ]
@@ -58,6 +59,7 @@ async function openPurchaseTicket(guild, member, planId) {
       SendMessages: true,
       AttachFiles: true,
       EmbedLinks: true,
+      AddReactions: true,
       ReadMessageHistory: true
     }).catch(() => {});
   }

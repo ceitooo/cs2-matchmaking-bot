@@ -265,28 +265,66 @@ async function run() {
 
     const deployText = await page.evaluate(() => document.body.innerText || "");
     const isStopped = deployText.includes("Detenido") || deployText.includes("Offline") || deployText.includes("Stopped");
+    const requestedAction = process.env.ACTION || "check_only";
+    console.log(`[auto-renew] Acción solicitada: ${requestedAction}`);
 
-    if (isStopped) {
-      console.log("[auto-renew] ⚠️ El bot se encuentra DETENIDO. Encendiéndolo...");
-
-      const startBtn = await page.$(
-        'button:has-text("Iniciar"), button:has-text("Start"), button[aria-label*="Iniciar"]'
-      );
-
-      if (startBtn) {
-        await startBtn.click();
-        console.log("[auto-renew] Botón 'Iniciar' presionado.");
-        await page.waitForTimeout(6000);
-
-        const restartScreenshot = path.join(screenshotsDir, "started-result.png");
-        await page.screenshot({ path: restartScreenshot, fullPage: true });
-
-        console.log("[auto-renew] ✅ ceitus-bot ha sido iniciado.");
-        powerStatusMessage = "⚡ Estaba detenido y fue reactivado";
-        didStartBot = true;
+    if (requestedAction === "git_pull_and_restart") {
+      console.log("[auto-renew] Intentando ejecutar 'git pull' en el shell de Bot-Hosting...");
+      const cmdInput = await page.$('input[placeholder*="comando"], input[placeholder*="ll"]');
+      const execBtn = await page.$('button:has-text("Ejecutar")');
+      if (cmdInput && execBtn) {
+        await cmdInput.fill("git pull");
+        await execBtn.click();
+        await page.waitForTimeout(4000);
+        console.log("[auto-renew] Comando 'git pull' ejecutado.");
       } else {
-        console.warn("[auto-renew] No se encontró el botón 'Iniciar'.");
-        powerStatusMessage = "⚠️ Detenido (no se pudo pulsar Iniciar)";
+        console.warn("[auto-renew] No se encontró el input de shell en Bot-Hosting.");
+      }
+    }
+
+    if (requestedAction === "restart_only" || requestedAction === "git_pull_and_restart" || isStopped) {
+      if (isStopped) {
+        console.log("[auto-renew] ⚠️ El bot se encuentra DETENIDO. Encendiéndolo...");
+        const startBtn = await page.$(
+          'button:has-text("Iniciar"), button:has-text("Start"), button[aria-label*="Iniciar"]'
+        );
+
+        if (startBtn) {
+          await startBtn.click();
+          console.log("[auto-renew] Botón 'Iniciar' presionado.");
+          await page.waitForTimeout(6000);
+
+          const restartScreenshot = path.join(screenshotsDir, "started-result.png");
+          await page.screenshot({ path: restartScreenshot, fullPage: true });
+
+          console.log("[auto-renew] ✅ ceitus-bot ha sido iniciado.");
+          powerStatusMessage = "⚡ Estaba detenido y fue reactivado";
+          didStartBot = true;
+        } else {
+          console.warn("[auto-renew] No se encontró el botón 'Iniciar'.");
+          powerStatusMessage = "⚠️ Detenido (no se pudo pulsar Iniciar)";
+        }
+      } else {
+        console.log("[auto-renew] Reiniciando el bot...");
+        const restartBtn = await page.$(
+          'button:has-text("Reiniciar"), button:has-text("Restart")'
+        );
+        if (restartBtn) {
+          await restartBtn.click();
+          await page.waitForTimeout(2000);
+          const confirmBtn = await page.$(
+            '.modal button:has-text("Reiniciar"), .modal button:has-text("Confirmar"), button:has-text("Aceptar")'
+          );
+          if (confirmBtn) await confirmBtn.click();
+          await page.waitForTimeout(6000);
+          console.log("[auto-renew] ✅ Bot reiniciado con éxito.");
+          powerStatusMessage = "🔄 Bot reiniciado con éxito";
+          didStartBot = true;
+        } else {
+          console.warn("[auto-renew] No se encontró el botón 'Reiniciar'.");
+        }
+        const restartScreenshot = path.join(screenshotsDir, "restart-result.png");
+        await page.screenshot({ path: restartScreenshot, fullPage: true }).catch(() => {});
       }
     } else {
       console.log("[auto-renew] 🟢 El bot está EN LÍNEA (Online / Ejecutándose).");

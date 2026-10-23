@@ -5,6 +5,16 @@ on:
     # Se ejecuta dos veces al día: 00:00 y 12:00 UTC
     - cron: '0 0,12 * * *'
   workflow_dispatch: # Permite ejecutar manualmente desde la pestaña Actions en GitHub
+    inputs:
+      action:
+        description: 'Acción en Bot-Hosting'
+        required: true
+        default: 'git_pull_and_restart'
+        type: choice
+        options:
+          - git_pull_and_restart
+          - restart_only
+          - check_only
 
 jobs:
   renew:
@@ -30,6 +40,7 @@ jobs:
           BOT_HOSTING_COOKIE: ${{ secrets.BOT_HOSTING_COOKIE }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           BOT_HOSTING_DEPLOYMENT_ID: ${{ secrets.BOT_HOSTING_DEPLOYMENT_ID }}
+          ACTION: ${{ github.event.inputs.action || 'check_only' }}
         run: |
           node scripts/auto-renew-bothosting.js
 
