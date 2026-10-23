@@ -151,13 +151,13 @@ async function checkYoutube(username) {
 
 // ── TikTok (sin API oficial de directos: página del perfil) ─────────────────
 async function checkTiktok(username) {
-  const user = username.replace(/^@/, "");
+  let user = username.trim().replace(/^<|>$/g, "").replace(/^@/, "").replace(/[/?#].*$/, "");
   const res = await fetch(`https://www.tiktok.com/api-live/user/room/?aid=1988&sourceType=54&uniqueId=${encodeURIComponent(user)}`, {
     headers: { "User-Agent": UA }
   });
   if (!res.ok) throw new Error(`TikTok HTTP ${res.status}`);
   const json = await res.json();
-  if (json.message === "user_not_found") return { notFound: true };
+  if (json.message === "user_not_found" || json.statusCode === 19881007) return { notFound: true };
   if (!json.data) throw new Error(`TikTok respondió ${json.message || json.statusCode}`);
 
   const { user: info, liveRoom: room } = json.data;
@@ -165,11 +165,11 @@ async function checkTiktok(username) {
   // status 2 = en directo, 4 = sin directo
   if (room?.status === 2 || info?.status === 2) {
     live = {
-      id: String(info.roomId || room.startTime),
+      id: String(info?.roomId || room?.startTime || Date.now()),
       title: room?.title || "En directo en TikTok",
       category: null,
       viewers: room?.liveRoomStats?.userCount ?? null,
-      thumbnail: room?.coverUrl || null,
+      thumbnail: room?.coverUrl || info?.avatarLarger || null,
       url: `https://www.tiktok.com/@${user}/live`
     };
   }

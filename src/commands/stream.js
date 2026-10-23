@@ -7,7 +7,8 @@ const platformChoices = Object.entries(PLATFORMS).map(([value, p]) => ({ name: p
 
 function normalize(platform, username) {
   // Acepta el usuario o el link del perfil (tiktok.com/@x, twitch.tv/x, youtube.com/@x, kick.com/x)
-  let u = username.trim().replace(/^(https?:\/\/)?(www\.|m\.)?[\w.-]+\.(com|tv)\//i, "").replace(/[/?#].*$/, "");
+  let u = username.trim().replace(/^<|>$/g, "").trim();
+  u = u.replace(/^(https?:\/\/)?(www\.|m\.|vm\.)?[\w.-]+\.(com|tv)\//i, "").replace(/[/?#].*$/, "");
   if (platform === "youtube") return u.startsWith("UC") ? u : "@" + u.replace(/^@/, "");
   return u.replace(/^@/, "").toLowerCase();
 }
@@ -97,7 +98,25 @@ module.exports = {
         createdBy: interaction.user.id
       });
       const extra = platform === "youtube" ? " y cuando suba un video nuevo" : "";
-      const estado = result.live ? "\n🔴 Ahora mismo está en directo (este directo no se avisa, sí los siguientes)." : "";
+      const estado = result.live ? `\n🔴 *¡Actualmente está en directo! Se envió el aviso a ${channel}.*` : "";
+
+      if (result.live) {
+        const livePayload = buildLiveMessage(
+          {
+            guild_id: guildId,
+            platform,
+            username,
+            channel_id: channel.id,
+            role_id: role?.id,
+            message: interaction.options.getString("mensaje")
+          },
+          result
+        );
+        await channel.send(livePayload).catch((err) => {
+          console.error("[streams] Error enviando aviso de directo actual:", err.message);
+        });
+      }
+
       return interaction.editReply(`✅ Avisaré en ${channel} cuando **${result.displayName || username}** empiece directo en ${p.name}${extra}.${estado}`);
     }
 
