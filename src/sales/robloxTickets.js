@@ -39,13 +39,26 @@ async function openPurchaseTicket(guild, member, planId) {
     parent: category?.id ?? null,
     permissionOverwrites: [
       { id: guild.roles.everyone,   deny:  [PermissionFlagsBits.ViewChannel] },
-      { id: member.id,              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] }
+      {
+        id: member.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.AttachFiles,
+          PermissionFlagsBits.EmbedLinks
+        ]
+      }
     ]
   });
 
   if (settings.shop_staff_role_id) {
     await channel.permissionOverwrites.create(settings.shop_staff_role_id, {
-      ViewChannel: true, SendMessages: true
+      ViewChannel: true,
+      SendMessages: true,
+      AttachFiles: true,
+      EmbedLinks: true,
+      ReadMessageHistory: true
     }).catch(() => {});
   }
 
