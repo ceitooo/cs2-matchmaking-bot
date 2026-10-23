@@ -22,6 +22,7 @@ const { buildBoostMessage } = require("../utils/boostBuilder");
 const { extractKeys, resolveResourceName } = require("../utils/keyDetection");
 const { lockoutMember } = require("../utils/lockout");
 const { extractUrls, matchesScamDomain, hasImage, isSuspiciousNewAccount, getTimeoutMs } = require("../utils/scamFilter");
+const { isDownloadQuery, REPLY_MESSAGE } = require("../utils/downloadQuery");
 
 const STICKY_TITLE = "📨 Recompensas por invitar";
 
@@ -165,6 +166,20 @@ async function handleGreeting(message) {
   if (isTicketChannel(message.channel)) return;
   if (!isGreeting(message.content)) return;
   await message.reply("👋 ¡Hola! ¿Cómo estás?").catch(() => {});
+}
+
+const downloadCooldowns = new Map(); // channelId -> timestamp
+
+async function handleDownloadQuery(message) {
+  if (message.author.bot) return;
+  if (!isDownloadQuery(message.content)) return;
+
+  const now = Date.now();
+  const lastTime = downloadCooldowns.get(message.channelId) ?? 0;
+  if (now - lastTime < 10000) return; // 10s cooldown por canal para evitar spam
+  downloadCooldowns.set(message.channelId, now);
+
+  await message.reply(REPLY_MESSAGE).catch(() => {});
 }
 
 async function handleFaq(message) {
@@ -359,6 +374,7 @@ module.exports = {
     await ensureGenericSticky(message);
     await scrubVerificationChannel(message);
     await handleGreeting(message);
+    await handleDownloadQuery(message);
     await handleFaq(message);
     await handleBlacklist(message);
     await handleScamProtection(message, settings);
