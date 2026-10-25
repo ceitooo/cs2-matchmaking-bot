@@ -1,4 +1,4 @@
-const DOWNLOAD_URL = "https://ceitotweaks-web.vercel.app/";
+const DOWNLOAD_URL = "https://ceitotweaks.com/";
 const REPLY_MESSAGE = `📥 Podés descargar el programa desde acá: ${DOWNLOAD_URL}`;
 
 function normalizeText(str) {
@@ -13,7 +13,7 @@ function normalizeText(str) {
 
 function isDownloadQuery(rawContent) {
   if (!rawContent || typeof rawContent !== "string") return false;
-  if (rawContent.includes("ceitotweaks-web.vercel.app")) return false;
+  if (rawContent.includes("ceitotweaks.com") || rawContent.includes("ceitotweaks-web.vercel.app")) return false;
 
   const text = normalizeText(rawContent);
   if (text.length < 5) return false;

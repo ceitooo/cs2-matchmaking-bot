@@ -6,7 +6,7 @@ const { isStaffOrCeito } = require("../utils/permissions");
 // Anuncia la última versión de CeitoTweaks con la descripción de su release
 // en GitHub: después de publicar no hay que escribir nada a mano.
 const RELEASE = "https://api.github.com/repos/ceitooo/ceitotweaks/releases/latest";
-const PAGINA = "https://ceitotweaks.vercel.app/";
+const PAGINA = "https://ceitotweaks.com/";
 // #ceitotweaks-updates y #🗣️┃general
 const CANALES = [/^ceitotweaks-updates$/, /(^|┃)general$/];
 const ROLES = ["CeitoTweaks", "User"];
