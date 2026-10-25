@@ -7,6 +7,7 @@ const { startIpnServer, setClient: setIpnClient } = require("./sales/paypalIpn")
 const { startRobloxChecker, setCheckerClient } = require("./sales/robloxChecker");
 const { startStreamChecker } = require("./streams/checker");
 const { startOffsetsChecker } = require("./offsets/checker");
+const { startVouchChecker } = require("./sales/ceitotweaksVouchChecker");
 
 const client = new Client({
   intents: [
@@ -44,4 +45,5 @@ setCheckerClient(client);
 startRobloxChecker();
 startStreamChecker(client);
 startOffsetsChecker(client);
+startVouchChecker(client);
 client.login(process.env.DISCORD_TOKEN);
