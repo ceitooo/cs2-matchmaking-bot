@@ -65,6 +65,7 @@ let _client = null;
 function startVouchChecker(client) {
   _client = client;
   console.log("[vouch-checker] Iniciado vigilante de compras en Supabase...");
+  if (!serviceRole) console.warn("[vouch-checker] Falta SUPABASE_SERVICE_ROLE_KEY en el .env: no se van a publicar vouches.");
 
   // Revisar cada 20 segundos
   setInterval(async () => {
