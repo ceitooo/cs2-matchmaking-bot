@@ -58,8 +58,8 @@ module.exports = {
     console.log(`Bot conectado como ${client.user.tag}`);
 
     client.user.setPresence({
-      activities: [{ name: "custom", type: ActivityType.Custom, state: "☁️ /help・discord.gg/ceitus" }],
-      status: "online"
+      activities: [{ name: "custom", type: ActivityType.Custom, state: "☁️ /help・discord.gg/ceitotweaks" }],
+      status: "dnd"
     });
 
     await runAutoSetup(client).catch((e) => console.error("[auto-setup] Error:", e.message));
