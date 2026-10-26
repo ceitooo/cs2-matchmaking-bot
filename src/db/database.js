@@ -438,7 +438,7 @@ function getInviteCount(guildId, userId) {
   return row?.uses ?? 0;
 }
 
-const INVITES_PER_REWARD = 5;
+const INVITES_PER_REWARD = 10;
 
 // Devuelve cuántos premios nuevos desbloqueó (normalmente 0 o 1, pero soporta saltos)
 function claimPendingRewards(guildId, userId) {

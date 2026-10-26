@@ -10,11 +10,11 @@ async function sendInviteReward(guild, inviterId) {
   const resources = getAvailableResources(guild.id);
 
   const embed = new EmbedBuilder()
-    .setTitle("🎉 ¡Felicidades, conseguiste 5 invitaciones!")
+    .setTitle("🎉 ¡Felicidades, conseguiste 10 invitaciones!")
     .setColor(0x2ecc71)
     .setDescription(
       resources.length > 0
-        ? "Elegí 7 días de uno de los siguientes recursos y te mando la key acá mismo:"
+        ? "Elegí 1 semana de Premium de uno de los siguientes recursos y te mando la key acá mismo:"
         : "Todavía no hay recursos cargados para canjear. Avisale a un admin, tu premio queda pendiente."
     );
 
@@ -26,7 +26,7 @@ async function sendInviteReward(guild, inviterId) {
   const menu = new StringSelectMenuBuilder()
     .setCustomId(`invite_reward:${guild.id}`)
     .setPlaceholder("Elegí un recurso")
-    .addOptions(resources.map((r) => ({ label: `${r.resource} (7 días)`, value: r.resource, description: `Stock: ${r.stock}` })));
+    .addOptions(resources.map((r) => ({ label: `${r.resource} (1 semana de Premium)`, value: r.resource, description: `Stock: ${r.stock}` })));
 
   await inviter.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] }).catch(() => {});
 }

@@ -18,7 +18,7 @@ function buildStockPanel(guildId) {
   for (const r of resources) {
     embed.addFields({
       name: r.resource,
-      value: `Stock: **${r.stock}**\nRequisito: ${r.requirement ?? "5 invitaciones"}`,
+      value: `Stock: **${r.stock}**\nRequisito: ${r.requirement ?? "10 invitaciones"}`,
       inline: true
     });
   }
@@ -125,7 +125,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(0x2ecc71)
         .setTitle("Stock actual")
-        .setDescription(resources.map((r) => `**${r.resource}** — stock: ${r.stock} — requisito: ${r.requirement ?? "5 invitaciones"}`).join("\n"));
+        .setDescription(resources.map((r) => `**${r.resource}** — stock: ${r.stock} — requisito: ${r.requirement ?? "10 invitaciones"}`).join("\n"));
       return interaction.reply({ embeds: [embed], flags: 64 });
     }
 

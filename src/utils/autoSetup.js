@@ -124,7 +124,7 @@ async function ensureInvitesSetup(guild, settings) {
 }
 
 async function ensureInviteStickyExists(guild, settings) {
-  if (!settings.invites_channel_id || settings.invites_sticky_message_id) return;
+  if (!settings.invites_channel_id) return;
 
   const channel = await guild.channels.fetch(settings.invites_channel_id).catch(() => null);
   if (!channel?.isTextBased()) return;
@@ -132,7 +132,15 @@ async function ensureInviteStickyExists(guild, settings) {
   const embed = new EmbedBuilder()
     .setTitle("📨 Recompensas por invitar")
     .setColor(0x5865f2)
-    .setDescription("Por cada **5 invitaciones** válidas conseguís **7 días** del producto que esté disponible en stock. ¡Seguí invitando gente al server! 🚀");
+    .setDescription("Por cada **10 invitaciones** válidas conseguís **1 semana de Premium**. ¡Seguí invitando gente al server! 🚀");
+
+  if (settings.invites_sticky_message_id) {
+    const existing = await channel.messages.fetch(settings.invites_sticky_message_id).catch(() => null);
+    if (existing) {
+      await existing.edit({ embeds: [embed] }).catch(() => {});
+      return;
+    }
+  }
 
   const sticky = await channel.send({ embeds: [embed] }).catch(() => null);
   if (sticky) updateGuildSettings(guild.id, { invites_sticky_message_id: sticky.id });

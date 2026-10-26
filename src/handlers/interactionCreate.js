@@ -108,7 +108,7 @@ async function _handle(interaction) {
       const disabledMenu = StringSelectMenuBuilder.from(interaction.component).setDisabled(true).setPlaceholder("Ya canjeaste esta recompensa");
       await interaction.update({ components: [new ActionRowBuilder().addComponents(disabledMenu)] }).catch(() => {});
 
-      await interaction.followUp({ content: `🔑 Acá tenés tu acceso de **${resource}** (7 días):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
+      await interaction.followUp({ content: `🔑 Acá tenés tu acceso de **${resource}** (1 semana de Premium):\n\`\`\`${key.key_value}\`\`\``, flags: 64 });
       await warnIfLowStock(interaction.client, guildId, resource);
       await refreshStockPanel(interaction.client, guildId);
       return;
@@ -325,11 +325,11 @@ async function _handle(interaction) {
       const resources = getAvailableResources(interaction.guildId);
 
       const embed = new EmbedBuilder()
-        .setTitle("🎉 ¡Felicidades, conseguiste 5 invitaciones!")
+        .setTitle("🎉 ¡Felicidades, conseguiste 10 invitaciones!")
         .setColor(0x2ecc71)
         .setDescription(
           resources.length > 0
-            ? "Elegí 7 días de uno de los siguientes recursos y te mando la key acá mismo:\n\n⚠️ Esto es una **simulación**, si elegís una opción no se descuenta stock real."
+            ? "Elegí 1 semana de Premium de uno de los siguientes recursos y te mando la key acá mismo:\n\n⚠️ Esto es una **simulación**, si elegís una opción no se descuenta stock real."
             : "Todavía no hay recursos cargados para canjear.\n\n⚠️ Esto es una **simulación**."
         );
 
@@ -338,7 +338,7 @@ async function _handle(interaction) {
         const menu = new StringSelectMenuBuilder()
           .setCustomId("test_key_select")
           .setPlaceholder("Elegí un recurso")
-          .addOptions(resources.map((r) => ({ label: `${r.resource} (7 días)`, value: r.resource, description: `Stock: ${r.stock}` })));
+          .addOptions(resources.map((r) => ({ label: `${r.resource} (1 semana de Premium)`, value: r.resource, description: `Stock: ${r.stock}` })));
         components.push(new ActionRowBuilder().addComponents(menu));
       }
 
@@ -353,7 +353,7 @@ async function _handle(interaction) {
     if (interaction.isStringSelectMenu() && interaction.customId === "test_key_select") {
       const resource = interaction.values[0];
       await interaction.reply({
-        content: `🔑 Acá tenés tu key de **${resource}** (7 días):\n\`\`\`${resource.toUpperCase().replace(/\s+/g, "")}-TEST-TEST-TEST-TEST\`\`\`\n⚠️ Esta es una key de prueba, no funciona de verdad.`,
+        content: `🔑 Acá tenés tu key de **${resource}** (1 semana de Premium):\n\`\`\`${resource.toUpperCase().replace(/\s+/g, "")}-TEST-TEST-TEST-TEST\`\`\`\n⚠️ Esta es una key de prueba, no funciona de verdad.`,
         flags: 64
       });
       return;
