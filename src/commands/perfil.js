@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { getOrCreatePlayer, getInviteCount, INVITES_PER_REWARD, db } = require("../db/database");
+const { getInviteCount, INVITES_PER_REWARD, db } = require("../db/database");
 
 const REGION_ROLES = ["Argentina", "Brasil", "Perú", "Chile", "Paraguay", "Uruguay", "México", "Bolivia", "Europa", "América / EEUU", "Asia"];
 const LANGUAGE_ROLES = ["Español", "Inglés", "Portugués", "Japonés", "Otro idioma"];
@@ -17,7 +17,6 @@ module.exports = {
       return interaction.reply({ content: "❌ No encontré a ese usuario en el server.", flags: 64 });
     }
 
-    const player = getOrCreatePlayer(target.id, target.username);
     const uses = getInviteCount(interaction.guild.id, target.id);
     const faltan = uses % INVITES_PER_REWARD === 0 ? INVITES_PER_REWARD : INVITES_PER_REWARD - (uses % INVITES_PER_REWARD);
 
@@ -34,7 +33,6 @@ module.exports = {
       .setColor(0x9b59b6)
       .addFields(
         { name: "En el server desde", value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:D>`, inline: true },
-        { name: "ELO", value: `${player.elo}`, inline: true },
         { name: "Invitaciones", value: `${uses} (faltan ${faltan} para el próximo premio)`, inline: true },
         { name: "Región", value: region, inline: true },
         { name: "Idioma", value: language, inline: true },

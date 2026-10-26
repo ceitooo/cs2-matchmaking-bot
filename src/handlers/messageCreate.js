@@ -151,21 +151,8 @@ async function scrubVerificationChannel(message) {
   await message.delete().catch(() => {});
 }
 
-function isGreeting(content) {
-  const normalized = content.trim().toLowerCase().replace(/[!¡.,¿?]+$/g, "");
-  return /^h?o+l+a+s?$/.test(normalized);
-}
-
 function isTicketChannel(channel) {
   return channel.name.startsWith("ticket-") || /tickets/i.test(channel.parent?.name ?? "");
-}
-
-async function handleGreeting(message) {
-  if (message.author.bot) return;
-  if (message.guild?.id === "1544716660559192106") return; // desactivado en Los Pinky
-  if (isTicketChannel(message.channel)) return;
-  if (!isGreeting(message.content)) return;
-  await message.reply("👋 ¡Hola! ¿Cómo estás?").catch(() => {});
 }
 
 const downloadCooldowns = new Map(); // channelId -> timestamp
@@ -373,7 +360,6 @@ module.exports = {
     await ensureInviteStickyBottom(message, settings);
     await ensureGenericSticky(message);
     await scrubVerificationChannel(message);
-    await handleGreeting(message);
     await handleDownloadQuery(message);
     await handleFaq(message);
     await handleBlacklist(message);

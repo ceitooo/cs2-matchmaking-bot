@@ -2,21 +2,12 @@ const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 const PUBLIC_CATEGORIES = [
   {
-    name: "🎮 Matchmaking",
-    commands: [
-      "`/stats` — tus estadísticas de ELO",
-      "`/steam-stats` — tus stats de CS2",
-      "`/vincular-steam` — vinculá tu cuenta de Steam",
-      "`/perfil` — tu perfil de comunidad"
-    ]
-  },
-  {
-    name: "🏆 Niveles",
-    commands: ["`/rank` — tu tarjeta de nivel y XP"]
+    name: "🏆 Niveles & Perfil",
+    commands: ["`/rank` — tu tarjeta de nivel y XP", "`/perfil` — tu perfil de comunidad (invitaciones, región, recordatorios)"]
   },
   {
     name: "😴 Utilidad",
-    commands: ["`/afk` — marcate como AFK con un motivo", "`/recordarme` — recordatorio personal por DM", "`/traducir` — traducí cualquier texto"]
+    commands: ["`/afk` — marcate como AFK con un motivo", "`/recordarme` — recordatorio personal por DM", "`/traducir` — traducí cualquier texto", "`/profile` — avatar o banner en máxima resolución"]
   },
   {
     name: "🎨 Imágenes divertidas",

@@ -2,11 +2,9 @@ require("dotenv").config();
 const fs = require("node:fs");
 const path = require("node:path");
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
-const { startSteamAuthServer } = require("./steam/server");
 const { startIpnServer, setClient: setIpnClient } = require("./sales/paypalIpn");
 const { startRobloxChecker, setCheckerClient } = require("./sales/robloxChecker");
 const { startStreamChecker } = require("./streams/checker");
-const { startOffsetsChecker } = require("./offsets/checker");
 const { startVouchChecker } = require("./sales/ceitotweaksVouchChecker");
 
 const client = new Client({
@@ -38,12 +36,10 @@ for (const file of fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"))) 
   }
 }
 
-startSteamAuthServer(client);
 setIpnClient(client);
 startIpnServer();
 setCheckerClient(client);
 startRobloxChecker();
 startStreamChecker(client);
-startOffsetsChecker(client);
 startVouchChecker(client);
 client.login(process.env.DISCORD_TOKEN);

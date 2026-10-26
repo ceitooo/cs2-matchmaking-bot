@@ -15,9 +15,7 @@ const CEITUS_ONLY_COMMANDS = new Set([
   "onceitusroblox",
   "misinvitaciones",
   "probarboost",
-  "probarkey",
-  "panel",
-  "vincular-steam"
+  "probarkey"
 ]);
 
 const globalCommands = [];

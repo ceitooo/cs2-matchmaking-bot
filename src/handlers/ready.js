@@ -5,7 +5,6 @@ const { startSubscriptionChecker } = require("../utils/subscriptionChecker");
 const { startGiveawayChecker } = require("../utils/giveawayChecker");
 const { startDbBackups } = require("../utils/dbBackup");
 const { startPersonalReminderChecker } = require("../utils/personalReminderChecker");
-const { restoreQueuesOnReady } = require("../utils/quickQueue");
 const { startLockoutChecker } = require("../utils/lockout");
 const { startHostingReminder } = require("../utils/hostingReminder");
 const fs = require("fs");
@@ -23,9 +22,7 @@ const CEITUS_ONLY_COMMANDS = new Set([
   "tienda",
   "misinvitaciones",
   "probarboost",
-  "probarkey",
-  "panel",
-  "vincular-steam"
+  "probarkey"
 ]);
 
 async function deployCommands(client) {
@@ -71,7 +68,6 @@ module.exports = {
     startGiveawayChecker(client);
     startDbBackups(client);
     startPersonalReminderChecker(client);
-    restoreQueuesOnReady(client).catch((e) => console.error("[quickQueue] Error restaurando colas:", e.message));
     startLockoutChecker(client);
     startHostingReminder(client);
     deployCommands(client);

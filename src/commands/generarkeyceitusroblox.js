@@ -3,7 +3,7 @@ const { isStaffOrCeito } = require("../utils/permissions");
 const https = require("https");
 
 const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const API_HOST = "ceitotweaks-backend-eight.vercel.app";
+const API_HOST = "ceitotweaks-api.vercel.app";
 const API_PATH = "/api/owner-stats";
 
 function randSeg(n = 4) {
