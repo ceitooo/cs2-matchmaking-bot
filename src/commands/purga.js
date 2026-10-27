@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require("discord.js");
 const { isHighestRoleOrCeito } = require("../utils/permissions");
 
 const MAX_MESSAGES = 200;
@@ -23,7 +23,28 @@ module.exports = {
     const usuario = interaction.options.getUser("usuario");
     const contiene = interaction.options.getString("contiene")?.toLowerCase();
 
-    await interaction.deferReply({ flags: 64 });
+    // Se confirma antes de borrar: un número mal puesto (200 en vez de 20) no tiene vuelta atrás.
+    const filtros = [usuario && `de ${usuario}`, contiene && `que contengan "${contiene}"`].filter(Boolean).join(" y ");
+    const botones = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`purga_si:${interaction.id}`).setLabel(`Borrar ${cantidad}`).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`purga_no:${interaction.id}`).setLabel("Cancelar").setStyle(ButtonStyle.Secondary)
+    );
+    await interaction.reply({
+      content: `⚠️ Vas a borrar hasta **${cantidad}** mensaje(s) de este canal${filtros ? ` ${filtros}` : ""}. No se puede deshacer.`,
+      components: [botones],
+      flags: 64
+    });
+    const aviso = await interaction.fetchReply();
+    const click = await aviso
+      .awaitMessageComponent({ filter: (i) => i.user.id === interaction.user.id, time: 30000 })
+      .catch(() => null);
+    if (!click) {
+      return interaction.editReply({ content: "No confirmaste a tiempo, no se borró nada.", components: [] });
+    }
+    if (click.customId.startsWith("purga_no:")) {
+      return click.update({ content: "Cancelado, no se borró nada.", components: [] });
+    }
+    await click.update({ content: "🗑️ Borrando…", components: [] });
 
     let toDelete = [];
     let lastId;
