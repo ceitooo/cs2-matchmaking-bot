@@ -51,16 +51,25 @@ async function deployCommands(client) {
   }
 }
 
+function updatePresence(client) {
+  const count = client.guilds.cache.size;
+  const label = count === 1 ? "1 server" : `${count} servers`;
+  client.user.setPresence({
+    activities: [{ name: "custom", type: ActivityType.Custom, state: `☁️ /help・${label}・discord.gg/ceitotweaks` }],
+    status: "dnd"
+  });
+}
+
 module.exports = {
   name: "clientReady",
   once: true,
   async execute(client) {
     console.log(`Bot conectado como ${client.user.tag}`);
 
-    client.user.setPresence({
-      activities: [{ name: "custom", type: ActivityType.Custom, state: "☁️ /help・discord.gg/ceitotweaks" }],
-      status: "dnd"
-    });
+    updatePresence(client);
+    client.on("guildCreate", () => updatePresence(client));
+    client.on("guildDelete", () => updatePresence(client));
+    setInterval(() => updatePresence(client), 10 * 60 * 1000);
 
     await runAutoSetup(client).catch((e) => console.error("[auto-setup] Error:", e.message));
     await primeAllGuilds(client).catch((e) => console.error("[invites] Error inicializando cache:", e.message));
