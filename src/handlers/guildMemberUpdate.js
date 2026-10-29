@@ -135,10 +135,33 @@ async function handleNicknameGuard(oldMember, newMember, settings) {
   }
 }
 
+const CEITOTWEAKS_GUILD_ID = "1339090100424019978";
+const VERIFIED_ROLE_ID = "1563952522463543380";
+const USER_ROLE_ID = "1339103137901969439";
+
+async function handleVerificationSync(oldMember, newMember) {
+  if (newMember.guild.id !== CEITOTWEAKS_GUILD_ID || newMember.user.bot) return;
+
+  const hadVerified = oldMember.roles.cache.has(VERIFIED_ROLE_ID);
+  const hasVerified = newMember.roles.cache.has(VERIFIED_ROLE_ID);
+  const hadUser = oldMember.roles.cache.has(USER_ROLE_ID);
+  const hasUser = newMember.roles.cache.has(USER_ROLE_ID);
+
+  // Si recibe Verified (por ejemplo vía RestoreCord), otorgar automáticamente rol User
+  if (!hadVerified && hasVerified && !hasUser) {
+    await newMember.roles.add(USER_ROLE_ID, "Auto-sync: otorgar rol User al verificarse").catch(() => {});
+  }
+  // Si recibe User, otorgar automáticamente rol Verified
+  else if (!hadUser && hasUser && !hasVerified) {
+    await newMember.roles.add(VERIFIED_ROLE_ID, "Auto-sync: otorgar rol Verified al recibir User").catch(() => {});
+  }
+}
+
 module.exports = {
   name: "guildMemberUpdate",
   async execute(oldMember, newMember) {
     const settings = getGuildSettings(newMember.guild.id);
     await handleNicknameGuard(oldMember, newMember, settings);
+    await handleVerificationSync(oldMember, newMember);
   }
 };

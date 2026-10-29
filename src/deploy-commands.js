@@ -1,6 +1,6 @@
-require("dotenv").config();
-const fs = require("node:fs");
 const path = require("node:path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
+const fs = require("node:fs");
 const { REST, Routes } = require("discord.js");
 
 // Debe coincidir con la lista en src/handlers/ready.js
